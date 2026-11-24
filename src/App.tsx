@@ -1,16 +1,19 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { fetchRecentPolls } from './api.js';
-import { useI18n } from './i18n.jsx';
-import CreatePoll from './components/CreatePoll.jsx';
-import PollView from './components/PollView.jsx';
-import RecentPolls from './components/RecentPolls.jsx';
+import { useCallback, useEffect, useState } from 'react';
+import { fetchRecentPolls } from './api.ts';
+import { useI18n } from './i18n.tsx';
+import type { RecentPollSummary } from './types.ts';
+import CreatePoll from './components/CreatePoll.tsx';
+import PollView from './components/PollView.tsx';
+import RecentPolls from './components/RecentPolls.tsx';
 
-function parsePollIdFromPath(pathname) {
+type Theme = 'light' | 'dark';
+
+function parsePollIdFromPath(pathname: string): string | null {
   const match = pathname.match(/^\/poll\/([A-Za-z0-9_-]+)\/?$/);
   return match ? match[1] : null;
 }
 
-function getInitialTheme() {
+function getInitialTheme(): Theme {
   if (typeof window === 'undefined') return 'light';
   try {
     const saved = localStorage.getItem('theme');
@@ -23,10 +26,12 @@ function getInitialTheme() {
 
 export default function App() {
   const { lang, toggleLang, t } = useI18n();
-  const [pollId, setPollId] = useState(() => parsePollIdFromPath(window.location.pathname));
-  const [justCreatedId, setJustCreatedId] = useState(null);
-  const [recentPolls, setRecentPolls] = useState([]);
-  const [theme, setTheme] = useState(getInitialTheme);
+  const [pollId, setPollId] = useState<string | null>(() =>
+    parsePollIdFromPath(window.location.pathname)
+  );
+  const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
+  const [recentPolls, setRecentPolls] = useState<RecentPollSummary[]>([]);
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -34,7 +39,7 @@ export default function App() {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e) => {
+    const handleChange = (e: MediaQueryListEvent) => {
       try {
         if (!localStorage.getItem('theme')) {
           setTheme(e.matches ? 'dark' : 'light');
@@ -49,7 +54,7 @@ export default function App() {
 
   const toggleTheme = () => {
     setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
+      const next: Theme = prev === 'dark' ? 'light' : 'dark';
       try {
         localStorage.setItem('theme', next);
       } catch {
@@ -86,7 +91,7 @@ export default function App() {
     setJustCreatedId(null);
   };
 
-  const navigateToPoll = (id, created = false) => {
+  const navigateToPoll = (id: string, created = false) => {
     window.history.pushState({}, '', `/poll/${id}`);
     setPollId(id);
     setJustCreatedId(created ? id : null);

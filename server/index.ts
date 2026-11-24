@@ -2,9 +2,17 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import express from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import cookieParser from 'cookie-parser';
-import { createPoll, getPoll, hashIp, listRecentPolls, recordVote, updateVote } from './db.js';
+import {
+  createPoll,
+  getPoll,
+  hashIp,
+  listRecentPolls,
+  recordVote,
+  updateVote,
+  type PollOptionInput,
+} from './db.ts';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -16,10 +24,10 @@ app.set('trust proxy', true);
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 
-// In-memory map of pollId -> Set<express.Response> for live SSE updates
-const sseClients = new Map();
+// In-memory map of pollId -> Set<Response> for live SSE updates
+const sseClients = new Map<string, Set<Response>>();
 
-function getClientIp(req) {
+function getClientIp(req: Request): string {
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string' && forwarded.length > 0) {
     return forwarded.split(',')[0].trim();
@@ -27,9 +35,15 @@ function getClientIp(req) {
   return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
-function getOrCreateVoterToken(req, res) {
-  let token = req.cookies?.[VOTER_COOKIE];
-  if (!token || typeof token !== 'string' || token.length < 16) {
+function getVoterCookie(req: Request): string | null {
+  const cookies = req.cookies as Record<string, unknown> | undefined;
+  const raw = cookies?.[VOTER_COOKIE];
+  return typeof raw === 'string' ? raw : null;
+}
+
+function getOrCreateVoterToken(req: Request, res: Response): string {
+  let token = getVoterCookie(req);
+  if (!token || token.length < 16) {
     token = crypto.randomUUID();
     res.cookie(VOTER_COOKIE, token, {
       httpOnly: true,
@@ -41,7 +55,7 @@ function getOrCreateVoterToken(req, res) {
   return token;
 }
 
-function broadcastPollUpdate(pollId) {
+function broadcastPollUpdate(pollId: string): void {
   const clients = sseClients.get(pollId);
   if (!clients || clients.size === 0) return;
 
@@ -59,11 +73,11 @@ function broadcastPollUpdate(pollId) {
   }
 }
 
-app.get('/api/health', (_req, res) => {
+app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok' });
 });
 
-app.get('/api/polls', (_req, res) => {
+app.get('/api/polls', (_req: Request, res: Response) => {
   try {
     const polls = listRecentPolls(12);
     res.json({ polls });
@@ -73,7 +87,9 @@ app.get('/api/polls', (_req, res) => {
   }
 });
 
-function normalizeOptionUrl(rawUrl) {
+type NormalizeUrlResult = { url: string; error?: undefined } | { url?: undefined; error: string };
+
+function normalizeOptionUrl(rawUrl: unknown): NormalizeUrlResult {
   if (typeof rawUrl !== 'string') return { url: '' };
   const trimmed = rawUrl.trim();
   if (!trimmed) return { url: '' };
@@ -98,13 +114,13 @@ function normalizeOptionUrl(rawUrl) {
   }
 }
 
-app.post('/api/polls', (req, res) => {
+app.post('/api/polls', (req: Request, res: Response) => {
   try {
-    const rawQuestion = typeof req.body?.question === 'string' ? req.body.question.trim() : '';
-    const rawDescription =
-      typeof req.body?.description === 'string' ? req.body.description.trim() : '';
-    const allowMultiple = Boolean(req.body?.allowMultiple);
-    const rawOptions = Array.isArray(req.body?.options) ? req.body.options : [];
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const rawQuestion = typeof body.question === 'string' ? body.question.trim() : '';
+    const rawDescription = typeof body.description === 'string' ? body.description.trim() : '';
+    const allowMultiple = Boolean(body.allowMultiple);
+    const rawOptions: unknown[] = Array.isArray(body.options) ? body.options : [];
 
     if (!rawQuestion) {
       return res.status(400).json({ error: 'Please enter a poll question.' });
@@ -116,13 +132,14 @@ app.post('/api/polls', (req, res) => {
       return res.status(400).json({ error: 'Description must be 500 characters or fewer.' });
     }
 
-    const cleanedOptions = [];
+    const cleanedOptions: PollOptionInput[] = [];
     for (const opt of rawOptions) {
+      const optObj = typeof opt === 'object' && opt !== null ? (opt as Record<string, unknown>) : null;
       const label =
         typeof opt === 'string'
           ? opt.trim()
-          : typeof opt?.label === 'string'
-            ? opt.label.trim()
+          : typeof optObj?.label === 'string'
+            ? optObj.label.trim()
             : '';
       if (!label) continue;
 
@@ -130,22 +147,18 @@ app.post('/api/polls', (req, res) => {
         return res.status(400).json({ error: 'Each option must be 160 characters or fewer.' });
       }
 
-      const details =
-        typeof opt === 'object' && opt !== null && typeof opt.details === 'string'
-          ? opt.details.trim()
-          : '';
+      const details = typeof optObj?.details === 'string' ? optObj.details.trim() : '';
       if (details.length > 240) {
         return res.status(400).json({ error: 'Option details must be 240 characters or fewer.' });
       }
 
-      const rawUrl =
-        typeof opt === 'object' && opt !== null && typeof opt.url === 'string' ? opt.url : '';
-      const { url, error: urlError } = normalizeOptionUrl(rawUrl);
-      if (urlError) {
-        return res.status(400).json({ error: urlError });
+      const rawUrl = typeof optObj?.url === 'string' ? optObj.url : '';
+      const normalized = normalizeOptionUrl(rawUrl);
+      if (normalized.error) {
+        return res.status(400).json({ error: normalized.error });
       }
 
-      cleanedOptions.push({ label, details, url });
+      cleanedOptions.push({ label, details, url: normalized.url });
     }
 
     if (cleanedOptions.length < 2) {
@@ -169,10 +182,10 @@ app.post('/api/polls', (req, res) => {
   }
 });
 
-app.get('/api/polls/:id', (req, res) => {
+app.get('/api/polls/:id', (req: Request<{ id: string }>, res: Response) => {
   try {
     const { id } = req.params;
-    const voterToken = req.cookies?.[VOTER_COOKIE] || null;
+    const voterToken = getVoterCookie(req);
     const ipHash = hashIp(getClientIp(req), id);
 
     const poll = getPoll(id, {
@@ -192,10 +205,11 @@ app.get('/api/polls/:id', (req, res) => {
   }
 });
 
-app.post('/api/polls/:id/vote', (req, res) => {
+app.post('/api/polls/:id/vote', (req: Request<{ id: string }>, res: Response) => {
   try {
     const { id } = req.params;
-    const optionIds = Array.isArray(req.body?.optionIds) ? req.body.optionIds : [];
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const optionIds: unknown[] = Array.isArray(body.optionIds) ? body.optionIds : [];
     const voterToken = getOrCreateVoterToken(req, res);
     const ipHash = hashIp(getClientIp(req), id);
 
@@ -229,11 +243,12 @@ app.post('/api/polls/:id/vote', (req, res) => {
   }
 });
 
-app.put('/api/polls/:id/vote', (req, res) => {
+app.put('/api/polls/:id/vote', (req: Request<{ id: string }>, res: Response) => {
   try {
     const { id } = req.params;
-    const optionIds = Array.isArray(req.body?.optionIds) ? req.body.optionIds : [];
-    const voterToken = req.cookies?.[VOTER_COOKIE] || null;
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const optionIds: unknown[] = Array.isArray(body.optionIds) ? body.optionIds : [];
+    const voterToken = getVoterCookie(req);
     const ipHash = hashIp(getClientIp(req), id);
 
     const result = updateVote({
@@ -262,7 +277,7 @@ app.put('/api/polls/:id/vote', (req, res) => {
   }
 });
 
-app.get('/api/polls/:id/stream', (req, res) => {
+app.get('/api/polls/:id/stream', (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
   const poll = getPoll(id);
   if (!poll) {
@@ -276,10 +291,12 @@ app.get('/api/polls/:id/stream', (req, res) => {
 
   res.write(': connected\n\n');
 
-  if (!sseClients.has(id)) {
-    sseClients.set(id, new Set());
+  let clients = sseClients.get(id);
+  if (!clients) {
+    clients = new Set<Response>();
+    sseClients.set(id, clients);
   }
-  sseClients.get(id).add(res);
+  clients.add(res);
 
   const heartbeat = setInterval(() => {
     res.write(': ping\n\n');
@@ -301,15 +318,15 @@ app.get('/api/polls/:id/stream', (req, res) => {
 const distDir = path.resolve(process.cwd(), 'dist');
 if (fs.existsSync(distDir)) {
   app.use(express.static(distDir));
-  app.get('/{*splat}', (req, res, next) => {
+  app.get('/{*splat}', (req: Request, res: Response, next: NextFunction) => {
     if (req.path.startsWith('/api/')) return next();
     res.sendFile(path.join(distDir, 'index.html'));
   });
 }
 
-function getLanAddresses() {
+function getLanAddresses(): string[] {
   const interfaces = os.networkInterfaces();
-  const addresses = [];
+  const addresses: string[] = [];
   for (const entries of Object.values(interfaces)) {
     for (const entry of entries || []) {
       if (entry.family === 'IPv4' && !entry.internal) {

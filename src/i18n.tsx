@@ -1,8 +1,99 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
-export const SUPPORTED_LANGS = ['en', 'es'];
+export const SUPPORTED_LANGS = ['en', 'es'] as const;
+export type Lang = (typeof SUPPORTED_LANGS)[number];
 
-const TRANSLATIONS = {
+type TranslationDict = {
+  pageTitle: string;
+  nav: {
+    newPoll: string;
+    switchToLight: string;
+    switchToDark: string;
+    switchLanguage: string;
+    languageLabel: string;
+  };
+  hero: {
+    title: string;
+    subtitle: string;
+  };
+  footer: string;
+  create: {
+    questionLabel: string;
+    questionPlaceholder: string;
+    descriptionLabel: string;
+    optional: string;
+    descriptionPlaceholder: string;
+    optionsLabel: string;
+    optionPlaceholder: string;
+    hideExtraInfo: string;
+    addExtraInfo: string;
+    addExtraInfoAria: string;
+    infoButton: string;
+    removeOption: string;
+    removeOptionAria: string;
+    linkPlaceholder: string;
+    detailsPlaceholder: string;
+    addOption: string;
+    votingType: string;
+    singleChoice: string;
+    multipleChoice: string;
+    submitting: string;
+    submit: string;
+    errorQuestionRequired: string;
+    errorMinOptions: string;
+    errorCreateFailed: string;
+  };
+  poll: {
+    loading: string;
+    notFoundTitle: string;
+    createNew: string;
+    justCreated: string;
+    voteUpdated: string;
+    voteSaved: string;
+    alreadyVotedNotice: string;
+    errorLoadFailed: string;
+    errorUpdateVote: string;
+    errorSubmitVote: string;
+    multipleChoice: string;
+    singleChoice: string;
+    voterSingular: string;
+    voterPlural: string;
+    voteSingular: string;
+    votePlural: string;
+    liveResults: string;
+    moreInfo: string;
+    cancel: string;
+    showResults: string;
+    updatingVote: string;
+    savingVote: string;
+    updateVote: string;
+    submitVote: string;
+    yourVote: string;
+    leading: string;
+    backToVote: string;
+    editVote: string;
+    createOwnPoll: string;
+    shareLabel: string;
+    copied: string;
+    copyLink: string;
+    share: string;
+    shareText: string;
+  };
+  recent: {
+    title: string;
+  };
+  serverErrors: Record<string, string>;
+};
+
+const TRANSLATIONS: Record<Lang, TranslationDict> = {
   en: {
     pageTitle: 'Poll Walker — Create & Share Live Polls',
     nav: {
@@ -221,7 +312,11 @@ const TRANSLATIONS = {
   },
 };
 
-export function detectBrowserLang() {
+function isSupportedLang(value: string | null | undefined): value is Lang {
+  return value === 'en' || value === 'es';
+}
+
+export function detectBrowserLang(): Lang {
   if (typeof navigator === 'undefined') return 'en';
   const candidates =
     Array.isArray(navigator.languages) && navigator.languages.length > 0
@@ -231,39 +326,55 @@ export function detectBrowserLang() {
   for (const locale of candidates) {
     if (typeof locale !== 'string') continue;
     const base = locale.toLowerCase().split('-')[0];
-    if (SUPPORTED_LANGS.includes(base)) {
+    if (isSupportedLang(base)) {
       return base;
     }
   }
   return 'en';
 }
 
-export function getInitialLang() {
+export function getInitialLang(): Lang {
   if (typeof window === 'undefined') return 'en';
   try {
     const saved = localStorage.getItem('lang');
-    if (saved && SUPPORTED_LANGS.includes(saved)) return saved;
+    if (isSupportedLang(saved)) return saved;
   } catch {
     // Ignore storage access errors
   }
   return detectBrowserLang();
 }
 
-function getNestedValue(obj, path) {
-  return path.split('.').reduce((acc, part) => (acc && acc[part] !== undefined ? acc[part] : undefined), obj);
+function getNestedValue(obj: unknown, path: string): string | undefined {
+  const result = path.split('.').reduce<unknown>((acc, part) => {
+    if (acc && typeof acc === 'object' && part in acc) {
+      return (acc as Record<string, unknown>)[part];
+    }
+    return undefined;
+  }, obj);
+  return typeof result === 'string' ? result : undefined;
 }
 
-function interpolate(template, params) {
-  if (!params || typeof template !== 'string') return template;
-  return template.replace(/\{(\w+)\}/g, (match, key) =>
+type InterpolationParams = Record<string, string | number>;
+
+function interpolate(template: string, params?: InterpolationParams): string {
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (match, key: string) =>
     params[key] !== undefined ? String(params[key]) : match
   );
 }
 
-const I18nContext = createContext(null);
+export interface I18nContextValue {
+  lang: Lang;
+  setLang: (nextLang: Lang) => void;
+  toggleLang: () => void;
+  t: (key: string, params?: InterpolationParams) => string;
+  translateServerError: (message?: string, fallbackKey?: string) => string;
+}
 
-export function I18nProvider({ children }) {
-  const [lang, setLangState] = useState(getInitialLang);
+const I18nContext = createContext<I18nContextValue | null>(null);
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(getInitialLang);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -285,8 +396,8 @@ export function I18nProvider({ children }) {
     return () => window.removeEventListener('languagechange', handleLanguageChange);
   }, []);
 
-  const setLang = useCallback((nextLang) => {
-    if (!SUPPORTED_LANGS.includes(nextLang)) return;
+  const setLang = useCallback((nextLang: Lang) => {
+    if (!isSupportedLang(nextLang)) return;
     setLangState(nextLang);
     try {
       localStorage.setItem('lang', nextLang);
@@ -297,7 +408,7 @@ export function I18nProvider({ children }) {
 
   const toggleLang = useCallback(() => {
     setLangState((prev) => {
-      const next = prev === 'es' ? 'en' : 'es';
+      const next: Lang = prev === 'es' ? 'en' : 'es';
       try {
         localStorage.setItem('lang', next);
       } catch {
@@ -308,7 +419,7 @@ export function I18nProvider({ children }) {
   }, []);
 
   const t = useCallback(
-    (key, params) => {
+    (key: string, params?: InterpolationParams): string => {
       const value =
         getNestedValue(TRANSLATIONS[lang], key) ?? getNestedValue(TRANSLATIONS.en, key) ?? key;
       return interpolate(value, params);
@@ -317,7 +428,7 @@ export function I18nProvider({ children }) {
   );
 
   const translateServerError = useCallback(
-    (message, fallbackKey) => {
+    (message?: string, fallbackKey?: string): string => {
       if (!message) return fallbackKey ? t(fallbackKey) : '';
       const direct = TRANSLATIONS[lang]?.serverErrors?.[message];
       if (direct) return direct;
@@ -336,7 +447,7 @@ export function I18nProvider({ children }) {
     [lang, t]
   );
 
-  const value = useMemo(
+  const value = useMemo<I18nContextValue>(
     () => ({ lang, setLang, toggleLang, t, translateServerError }),
     [lang, setLang, toggleLang, t, translateServerError]
   );
@@ -344,7 +455,7 @@ export function I18nProvider({ children }) {
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
-export function useI18n() {
+export function useI18n(): I18nContextValue {
   const ctx = useContext(I18nContext);
   if (!ctx) {
     throw new Error('useI18n must be used within an I18nProvider');

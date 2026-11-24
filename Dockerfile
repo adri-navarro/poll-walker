@@ -5,8 +5,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY index.html vite.config.js ./
+COPY index.html vite.config.ts tsconfig.json tsconfig.app.json tsconfig.server.json tsconfig.node.json ./
 COPY src ./src
+COPY server ./server
 RUN npm run build
 
 FROM node:24-alpine
@@ -33,4 +34,4 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://127.0.0.1:${PORT}/api/health || exit 1
 
-CMD ["node", "server/index.js"]
+CMD ["node", "server/index.ts"]

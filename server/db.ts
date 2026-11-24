@@ -3,6 +3,131 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 
+export interface PollOptionInput {
+  label: string;
+  details?: string;
+  url?: string;
+}
+
+export interface PollOptionRecord {
+  id: number;
+  label: string;
+  details: string;
+  url: string;
+  votes: number;
+  percentage: number;
+}
+
+export interface PollRecord {
+  id: string;
+  question: string;
+  description: string;
+  allowMultiple: boolean;
+  createdAt: string;
+  totalVoters: number;
+  totalVotes: number;
+  hasVoted: boolean;
+  votedOptionIds: number[];
+  options: PollOptionRecord[];
+}
+
+export interface RecentPollRecord {
+  id: string;
+  question: string;
+  allowMultiple: boolean;
+  createdAt: string;
+  optionCount: number;
+  totalVoters: number;
+}
+
+export interface VoterContext {
+  voterToken: string | null;
+  ipHash: string;
+  enforceIp?: boolean;
+}
+
+export interface CreatePollParams {
+  question: string;
+  description?: string;
+  options: Array<string | PollOptionInput>;
+  allowMultiple?: boolean;
+}
+
+export interface VoteParams {
+  pollId: string;
+  optionIds: unknown[];
+  voterToken: string | null;
+  ipHash: string;
+  enforceIp?: boolean;
+}
+
+export interface RecordVoteParams extends VoteParams {
+  voterToken: string;
+}
+
+export type RecordVoteResult =
+  | { status: 'not_found' }
+  | { status: 'invalid'; message: string }
+  | { status: 'duplicate'; poll: PollRecord | null }
+  | { status: 'ok'; poll: PollRecord | null };
+
+export type UpdateVoteResult =
+  | { status: 'not_found' }
+  | { status: 'invalid'; message: string }
+  | { status: 'not_voted'; message: string }
+  | { status: 'ok'; poll: PollRecord | null };
+
+interface TableInfoRow {
+  name: string;
+}
+
+interface PollRow {
+  id: string;
+  question: string;
+  description: string;
+  allow_multiple: number;
+  created_at: string;
+}
+
+interface PollAllowMultipleRow {
+  id: string;
+  allow_multiple: number;
+}
+
+interface OptionWithVotesRow {
+  id: number;
+  label: string;
+  details: string;
+  url: string;
+  position: number;
+  votes: number;
+}
+
+interface CountRow {
+  count: number;
+}
+
+interface VoterTokenRow {
+  voter_token: string;
+}
+
+interface OptionIdRow {
+  option_id: number;
+}
+
+interface IdRow {
+  id: number;
+}
+
+interface RecentPollRow {
+  id: string;
+  question: string;
+  allow_multiple: number;
+  created_at: string;
+  option_count: number;
+  total_voters: number;
+}
+
 const DEFAULT_DB_PATH = path.resolve(process.cwd(), 'data', 'polls.db');
 const dbPath = process.env.DB_PATH || DEFAULT_DB_PATH;
 
@@ -56,7 +181,9 @@ db.exec(`
 
 // Migrate existing databases that were created before option details/url existed
 const optionColumns = new Set(
-  db.prepare('PRAGMA table_info(options)').all().map((col) => col.name)
+  (db.prepare('PRAGMA table_info(options)').all() as unknown as TableInfoRow[]).map(
+    (col) => col.name
+  )
 );
 if (!optionColumns.has('details')) {
   db.exec("ALTER TABLE options ADD COLUMN details TEXT NOT NULL DEFAULT ''");
@@ -65,7 +192,7 @@ if (!optionColumns.has('url')) {
   db.exec("ALTER TABLE options ADD COLUMN url TEXT NOT NULL DEFAULT ''");
 }
 
-function generatePollId() {
+function generatePollId(): string {
   const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   const bytes = crypto.randomBytes(8);
   let id = '';
@@ -75,14 +202,19 @@ function generatePollId() {
   return id;
 }
 
-export function hashIp(ip, pollId) {
+export function hashIp(ip: string, pollId: string): string {
   return crypto
     .createHash('sha256')
     .update(`${pollId}:${ip || 'unknown'}`)
     .digest('hex');
 }
 
-export function createPoll({ question, description = '', options, allowMultiple = false }) {
+export function createPoll({
+  question,
+  description = '',
+  options,
+  allowMultiple = false,
+}: CreatePollParams): PollRecord | null {
   const now = new Date().toISOString();
   let id = generatePollId();
 
@@ -116,10 +248,10 @@ export function createPoll({ question, description = '', options, allowMultiple 
   return getPoll(id);
 }
 
-export function getPoll(id, voterContext = null) {
+export function getPoll(id: string, voterContext: VoterContext | null = null): PollRecord | null {
   const poll = db
     .prepare('SELECT id, question, description, allow_multiple, created_at FROM polls WHERE id = ?')
-    .get(id);
+    .get(id) as PollRow | undefined;
 
   if (!poll) return null;
 
@@ -138,26 +270,26 @@ export function getPoll(id, voterContext = null) {
       GROUP BY o.id
       ORDER BY o.position ASC
     `)
-    .all(id);
+    .all(id) as unknown as OptionWithVotesRow[];
 
   const voterCountRow = db
     .prepare('SELECT COUNT(*) AS count FROM voter_records WHERE poll_id = ?')
-    .get(id);
+    .get(id) as CountRow | undefined;
 
   const totalVoters = Number(voterCountRow?.count ?? 0);
   const totalVotes = optionRows.reduce((sum, row) => sum + Number(row.votes), 0);
 
   let hasVoted = false;
-  let votedOptionIds = [];
+  let votedOptionIds: number[] = [];
 
   if (voterContext) {
     const { voterToken, ipHash, enforceIp = true } = voterContext;
-    let matchedToken = null;
+    let matchedToken: string | null = null;
 
     if (voterToken) {
       const byToken = db
         .prepare('SELECT voter_token FROM voter_records WHERE poll_id = ? AND voter_token = ?')
-        .get(id, voterToken);
+        .get(id, voterToken) as VoterTokenRow | undefined;
       if (byToken) {
         hasVoted = true;
         matchedToken = byToken.voter_token;
@@ -167,7 +299,7 @@ export function getPoll(id, voterContext = null) {
     if (!hasVoted && enforceIp && ipHash) {
       const byIp = db
         .prepare('SELECT voter_token FROM voter_records WHERE poll_id = ? AND ip_hash = ?')
-        .get(id, ipHash);
+        .get(id, ipHash) as VoterTokenRow | undefined;
       if (byIp) {
         hasVoted = true;
         matchedToken = byIp.voter_token;
@@ -177,7 +309,7 @@ export function getPoll(id, voterContext = null) {
     if (matchedToken) {
       const votedRows = db
         .prepare('SELECT option_id FROM votes WHERE poll_id = ? AND voter_token = ?')
-        .all(id, matchedToken);
+        .all(id, matchedToken) as unknown as OptionIdRow[];
       votedOptionIds = votedRows.map((r) => Number(r.option_id));
     }
   }
@@ -209,7 +341,7 @@ export function getPoll(id, voterContext = null) {
   };
 }
 
-export function listRecentPolls(limit = 12) {
+export function listRecentPolls(limit = 12): RecentPollRecord[] {
   const rows = db
     .prepare(`
       SELECT
@@ -223,7 +355,7 @@ export function listRecentPolls(limit = 12) {
       ORDER BY p.created_at DESC
       LIMIT ?
     `)
-    .all(limit);
+    .all(limit) as unknown as RecentPollRow[];
 
   return rows.map((row) => ({
     id: row.id,
@@ -235,7 +367,11 @@ export function listRecentPolls(limit = 12) {
   }));
 }
 
-function validateVoteOptions(poll, optionIds) {
+type ValidateVoteResult =
+  | { valid: false; message: string }
+  | { valid: true; uniqueOptionIds: number[] };
+
+function validateVoteOptions(poll: PollAllowMultipleRow, optionIds: unknown[]): ValidateVoteResult {
   const uniqueOptionIds = [...new Set(optionIds.map(Number).filter(Number.isInteger))];
   if (uniqueOptionIds.length === 0) {
     return { valid: false, message: 'Select at least one option.' };
@@ -244,10 +380,9 @@ function validateVoteOptions(poll, optionIds) {
     return { valid: false, message: 'This poll only allows selecting one option.' };
   }
 
-  const validOptions = db
-    .prepare('SELECT id FROM options WHERE poll_id = ?')
-    .all(poll.id)
-    .map((r) => Number(r.id));
+  const validOptions = (
+    db.prepare('SELECT id FROM options WHERE poll_id = ?').all(poll.id) as unknown as IdRow[]
+  ).map((r) => Number(r.id));
   const validSet = new Set(validOptions);
 
   if (!uniqueOptionIds.every((optId) => validSet.has(optId))) {
@@ -257,10 +392,16 @@ function validateVoteOptions(poll, optionIds) {
   return { valid: true, uniqueOptionIds };
 }
 
-export function recordVote({ pollId, optionIds, voterToken, ipHash, enforceIp = true }) {
+export function recordVote({
+  pollId,
+  optionIds,
+  voterToken,
+  ipHash,
+  enforceIp = true,
+}: RecordVoteParams): RecordVoteResult {
   const poll = db
     .prepare('SELECT id, allow_multiple FROM polls WHERE id = ?')
-    .get(pollId);
+    .get(pollId) as PollAllowMultipleRow | undefined;
 
   if (!poll) {
     return { status: 'not_found' };
@@ -317,10 +458,16 @@ export function recordVote({ pollId, optionIds, voterToken, ipHash, enforceIp = 
   };
 }
 
-export function updateVote({ pollId, optionIds, voterToken, ipHash, enforceIp = true }) {
+export function updateVote({
+  pollId,
+  optionIds,
+  voterToken,
+  ipHash,
+  enforceIp = true,
+}: VoteParams): UpdateVoteResult {
   const poll = db
     .prepare('SELECT id, allow_multiple FROM polls WHERE id = ?')
-    .get(pollId);
+    .get(pollId) as PollAllowMultipleRow | undefined;
 
   if (!poll) {
     return { status: 'not_found' };
@@ -336,12 +483,12 @@ export function updateVote({ pollId, optionIds, voterToken, ipHash, enforceIp = 
 
   db.exec('BEGIN IMMEDIATE');
   try {
-    let matchedToken = null;
+    let matchedToken: string | null = null;
 
     if (voterToken) {
       const existingByToken = db
         .prepare('SELECT voter_token FROM voter_records WHERE poll_id = ? AND voter_token = ?')
-        .get(pollId, voterToken);
+        .get(pollId, voterToken) as VoterTokenRow | undefined;
       if (existingByToken) {
         matchedToken = existingByToken.voter_token;
       }
@@ -350,7 +497,7 @@ export function updateVote({ pollId, optionIds, voterToken, ipHash, enforceIp = 
     if (!matchedToken && enforceIp && ipHash) {
       const existingByIp = db
         .prepare('SELECT voter_token FROM voter_records WHERE poll_id = ? AND ip_hash = ?')
-        .get(pollId, ipHash);
+        .get(pollId, ipHash) as VoterTokenRow | undefined;
       if (existingByIp) {
         matchedToken = existingByIp.voter_token;
       }

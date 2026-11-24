@@ -1,27 +1,48 @@
-import React, { useState } from 'react';
-import { createPoll } from '../api.js';
-import { useI18n } from '../i18n.jsx';
+import { useState, type FormEvent } from 'react';
+import { createPoll } from '../api.ts';
+import { useI18n } from '../i18n.tsx';
+import type { Poll } from '../types.ts';
 
-function createEmptyOption() {
+interface OptionDraft {
+  label: string;
+  url: string;
+  details: string;
+  showExtra: boolean;
+}
+
+type OptionTextField = 'label' | 'url' | 'details';
+
+type FormError =
+  | { key: string }
+  | { serverMessage?: string; fallbackKey: string };
+
+interface CreatePollProps {
+  onCreated: (poll: Poll) => void;
+}
+
+function createEmptyOption(): OptionDraft {
   return { label: '', url: '', details: '', showExtra: false };
 }
 
-export default function CreatePoll({ onCreated }) {
+export default function CreatePoll({ onCreated }: CreatePollProps) {
   const { t, translateServerError } = useI18n();
   const [question, setQuestion] = useState('');
   const [description, setDescription] = useState('');
-  const [options, setOptions] = useState([createEmptyOption(), createEmptyOption()]);
+  const [options, setOptions] = useState<OptionDraft[]>([
+    createEmptyOption(),
+    createEmptyOption(),
+  ]);
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<FormError | null>(null);
 
-  const handleOptionFieldChange = (index, field, value) => {
+  const handleOptionFieldChange = (index: number, field: OptionTextField, value: string) => {
     setOptions((prev) =>
       prev.map((opt, i) => (i === index ? { ...opt, [field]: value } : opt))
     );
   };
 
-  const toggleOptionExtra = (index) => {
+  const toggleOptionExtra = (index: number) => {
     setOptions((prev) =>
       prev.map((opt, i) => (i === index ? { ...opt, showExtra: !opt.showExtra } : opt))
     );
@@ -32,12 +53,12 @@ export default function CreatePoll({ onCreated }) {
     setOptions((prev) => [...prev, createEmptyOption()]);
   };
 
-  const removeOption = (index) => {
+  const removeOption = (index: number) => {
     if (options.length <= 2) return;
     setOptions((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
@@ -69,14 +90,15 @@ export default function CreatePoll({ onCreated }) {
       });
       onCreated(poll);
     } catch (err) {
-      setError({ serverMessage: err.message, fallbackKey: 'create.errorCreateFailed' });
+      const message = err instanceof Error ? err.message : undefined;
+      setError({ serverMessage: message, fallbackKey: 'create.errorCreateFailed' });
     } finally {
       setSubmitting(false);
     }
   };
 
   const errorMessage = error
-    ? error.key
+    ? 'key' in error
       ? t(error.key)
       : translateServerError(error.serverMessage, error.fallbackKey)
     : '';

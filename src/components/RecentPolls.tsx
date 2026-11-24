@@ -1,7 +1,12 @@
-import React from 'react';
-import { useI18n } from '../i18n.jsx';
+import { useI18n } from '../i18n.tsx';
+import type { RecentPollSummary } from '../types.ts';
 
-export default function RecentPolls({ polls, onSelectPoll }) {
+interface RecentPollsProps {
+  polls: RecentPollSummary[];
+  onSelectPoll: (id: string) => void;
+}
+
+export default function RecentPolls({ polls, onSelectPoll }: RecentPollsProps) {
   const { t } = useI18n();
 
   if (!polls || polls.length === 0) return null;

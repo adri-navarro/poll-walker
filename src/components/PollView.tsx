@@ -1,8 +1,26 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { fetchPoll, submitVote, subscribeToPollResults, updateVote } from '../api.js';
-import { useI18n } from '../i18n.jsx';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import {
+  fetchPoll,
+  submitVote,
+  subscribeToPollResults,
+  updateVote,
+  type ApiError,
+} from '../api.ts';
+import { useI18n } from '../i18n.tsx';
+import type { LiveConnectionStatus, Poll } from '../types.ts';
 
-function formatLinkLabel(url, fallbackLabel) {
+interface PollViewProps {
+  pollId: string;
+  justCreated: boolean;
+  onCreateNew: () => void;
+}
+
+interface PollErrorState {
+  serverMessage?: string;
+  fallbackKey: string;
+}
+
+function formatLinkLabel(url: string, fallbackLabel: string): string {
   try {
     const parsed = new URL(url);
     return parsed.hostname.replace(/^www\./, '');
@@ -11,17 +29,17 @@ function formatLinkLabel(url, fallbackLabel) {
   }
 }
 
-export default function PollView({ pollId, justCreated, onCreateNew }) {
+export default function PollView({ pollId, justCreated, onCreateNew }: PollViewProps) {
   const { t, translateServerError } = useI18n();
-  const [poll, setPoll] = useState(null);
+  const [poll, setPoll] = useState<Poll | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedIds, setSelectedIds] = useState([]);
+  const [error, setError] = useState<PollErrorState | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [liveStatus, setLiveStatus] = useState('connecting');
+  const [liveStatus, setLiveStatus] = useState<LiveConnectionStatus>('connecting');
   const [voteNoticeKey, setVoteNoticeKey] = useState('');
 
   const shareUrl = useMemo(() => {
@@ -43,9 +61,10 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
         setPoll(data);
         setShowResults(Boolean(data.hasVoted));
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (!active) return;
-        setError({ serverMessage: err.message, fallbackKey: 'poll.errorLoadFailed' });
+        const message = err instanceof Error ? err.message : undefined;
+        setError({ serverMessage: message, fallbackKey: 'poll.errorLoadFailed' });
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -74,7 +93,7 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
     };
   }, [pollId]);
 
-  const toggleOption = (optionId) => {
+  const toggleOption = (optionId: number) => {
     if (!poll) return;
     if (poll.allowMultiple) {
       setSelectedIds((prev) =>
@@ -106,7 +125,7 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
     setError(null);
   };
 
-  const handleVote = async (e) => {
+  const handleVote = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (selectedIds.length === 0) return;
 
@@ -122,15 +141,16 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
       setIsEditing(false);
       setShowResults(true);
       setVoteNoticeKey(isEditing ? 'poll.voteUpdated' : 'poll.voteSaved');
-    } catch (err) {
-      if (err.alreadyVoted && err.poll) {
-        setPoll(err.poll);
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      if (apiErr.alreadyVoted && apiErr.poll) {
+        setPoll(apiErr.poll);
         setIsEditing(false);
         setShowResults(true);
         setVoteNoticeKey('poll.alreadyVotedNotice');
       } else {
         setError({
-          serverMessage: err.message,
+          serverMessage: apiErr instanceof Error ? apiErr.message : undefined,
           fallbackKey: isEditing ? 'poll.errorUpdateVote' : 'poll.errorSubmitVote',
         });
       }
@@ -145,7 +165,7 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2200);
     } catch {
-      const input = document.getElementById('share-url-input');
+      const input = document.getElementById('share-url-input') as HTMLInputElement | null;
       input?.select();
       document.execCommand('copy');
       setCopied(true);
@@ -179,11 +199,13 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
     );
   }
 
-  if (errorMessage && !poll) {
+  if (!poll) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
         <h2 style={{ marginTop: 0 }}>{t('poll.notFoundTitle')}</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem' }}>{errorMessage}</p>
+        {errorMessage && (
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem' }}>{errorMessage}</p>
+        )}
         <button type="button" className="btn btn-primary" onClick={onCreateNew}>
           {t('poll.createNew')}
         </button>

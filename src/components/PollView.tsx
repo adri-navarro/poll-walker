@@ -8,6 +8,7 @@ import {
 } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
 import type { LiveConnectionStatus, Poll } from '../types.ts';
+import LegalNotice from './LegalNotice.tsx';
 
 interface PollViewProps {
   pollId: string;
@@ -322,6 +323,7 @@ export default function PollView({ pollId, justCreated, onCreateNew }: PollViewP
                   : t('poll.submitVote')}
             </button>
           </div>
+          <LegalNotice action="vote" />
         </form>
       ) : (
         <div>

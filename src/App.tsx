@@ -5,12 +5,30 @@ import type { RecentPollSummary } from './types.ts';
 import CreatePoll from './components/CreatePoll.tsx';
 import PollView from './components/PollView.tsx';
 import RecentPolls from './components/RecentPolls.tsx';
+import AppLink from './components/AppLink.tsx';
+import AvisoLegal from './legal/AvisoLegal.tsx';
+import Privacidad from './legal/Privacidad.tsx';
+import Cookies from './legal/Cookies.tsx';
+import Terminos from './legal/Terminos.tsx';
+import { NAVIGATE_EVENT, navigate } from './navigation.ts';
 
 type Theme = 'light' | 'dark';
 
-function parsePollIdFromPath(pathname: string): string | null {
+const LEGAL_ROUTES = {
+  '/aviso-legal': 'aviso',
+  '/privacidad': 'privacidad',
+  '/cookies': 'cookies',
+  '/terminos': 'terminos',
+} as const;
+type LegalPage = (typeof LEGAL_ROUTES)[keyof typeof LEGAL_ROUTES];
+
+type Route = { poll: string | null; legal: LegalPage | null };
+
+function parseRoute(pathname: string): Route {
   const match = pathname.match(/^\/poll\/([A-Za-z0-9_-]+)\/?$/);
-  return match ? match[1] : null;
+  if (match) return { poll: match[1], legal: null };
+  const key = pathname.replace(/\/+$/, '') as keyof typeof LEGAL_ROUTES;
+  return { poll: null, legal: LEGAL_ROUTES[key] ?? null };
 }
 
 function getInitialTheme(): Theme {
@@ -26,9 +44,9 @@ function getInitialTheme(): Theme {
 
 export default function App() {
   const { lang, toggleLang, t } = useI18n();
-  const [pollId, setPollId] = useState<string | null>(() =>
-    parsePollIdFromPath(window.location.pathname)
-  );
+  const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname));
+  const pollId = route.poll;
+  const legalPage = route.legal;
   const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
   const [recentPolls, setRecentPolls] = useState<RecentPollSummary[]>([]);
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
@@ -71,31 +89,29 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const onPopState = () => {
-      setPollId(parsePollIdFromPath(window.location.pathname));
+    const onLocationChange = () => {
+      setRoute(parseRoute(window.location.pathname));
       setJustCreatedId(null);
     };
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
+    window.addEventListener('popstate', onLocationChange);
+    window.addEventListener(NAVIGATE_EVENT, onLocationChange);
+    return () => {
+      window.removeEventListener('popstate', onLocationChange);
+      window.removeEventListener(NAVIGATE_EVENT, onLocationChange);
+    };
   }, []);
 
   useEffect(() => {
-    if (!pollId) {
+    if (!pollId && !legalPage) {
       loadRecent();
     }
-  }, [pollId, loadRecent]);
+  }, [pollId, legalPage, loadRecent]);
 
-  const navigateHome = () => {
-    window.history.pushState({}, '', '/');
-    setPollId(null);
-    setJustCreatedId(null);
-  };
+  const navigateHome = () => navigate('/');
 
   const navigateToPoll = (id: string, created = false) => {
-    window.history.pushState({}, '', `/poll/${id}`);
-    setPollId(id);
+    navigate(`/poll/${id}`);
     setJustCreatedId(created ? id : null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -189,7 +205,15 @@ export default function App() {
       </header>
 
       <main className="main-container">
-        {pollId ? (
+        {legalPage === 'aviso' ? (
+          <AvisoLegal />
+        ) : legalPage === 'privacidad' ? (
+          <Privacidad />
+        ) : legalPage === 'cookies' ? (
+          <Cookies />
+        ) : legalPage === 'terminos' ? (
+          <Terminos />
+        ) : pollId ? (
           <PollView
             pollId={pollId}
             justCreated={justCreatedId === pollId}
@@ -207,7 +231,18 @@ export default function App() {
         )}
       </main>
 
-      <footer className="footer">{t('footer')}</footer>
+      <footer className="footer">
+        <p>{t('footer')}</p>
+        <nav className="footer-links" aria-label={t('legal.footerNavLabel')}>
+          <AppLink href="/aviso-legal">{t('legal.titles.aviso')}</AppLink>
+          <span aria-hidden="true">·</span>
+          <AppLink href="/privacidad">{t('legal.titles.privacidad')}</AppLink>
+          <span aria-hidden="true">·</span>
+          <AppLink href="/cookies">{t('legal.titles.cookies')}</AppLink>
+          <span aria-hidden="true">·</span>
+          <AppLink href="/terminos">{t('legal.titles.terminos')}</AppLink>
+        </nav>
+      </footer>
     </div>
   );
 }

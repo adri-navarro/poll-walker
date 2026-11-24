@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { createPoll } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
 import type { Poll } from '../types.ts';
+import LegalNotice from './LegalNotice.tsx';
 
 interface OptionDraft {
   label: string;
@@ -269,6 +270,8 @@ export default function CreatePoll({ onCreated }: CreatePollProps) {
           {submitting ? t('create.submitting') : t('create.submit')}
         </button>
       </div>
+      <p className="legal-notice legal-hint">{t('legalNotice.noPersonalData')}</p>
+      <LegalNotice action="create" />
     </form>
   );
 }

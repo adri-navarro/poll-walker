@@ -90,6 +90,21 @@ type TranslationDict = {
   recent: {
     title: string;
   };
+  legal: {
+    back: string;
+    lastUpdated: string;
+    footerNavLabel: string;
+    titles: { aviso: string; privacidad: string; cookies: string; terminos: string };
+  };
+  legalNotice: {
+    createBefore: string;
+    voteBefore: string;
+    terms: string;
+    middle: string;
+    privacy: string;
+    after: string;
+    noPersonalData: string;
+  };
   serverErrors: Record<string, string>;
 };
 
@@ -173,6 +188,26 @@ const TRANSLATIONS: Record<Lang, TranslationDict> = {
     },
     recent: {
       title: 'Recent Polls',
+    },
+    legal: {
+      back: 'Back',
+      lastUpdated: 'Last updated',
+      footerNavLabel: 'Legal information',
+      titles: {
+        aviso: 'Legal notice',
+        privacidad: 'Privacy policy',
+        cookies: 'Cookie policy',
+        terminos: 'Terms of use',
+      },
+    },
+    legalNotice: {
+      createBefore: 'By creating a poll you accept the ',
+      voteBefore: 'By voting you accept the ',
+      terms: 'Terms of use',
+      middle: '. See also the ',
+      privacy: 'Privacy policy',
+      after: '.',
+      noPersonalData: "Don't include other people's personal data.",
     },
     serverErrors: {
       'Failed to load recent polls.': 'Failed to load recent polls.',
@@ -278,6 +313,26 @@ const TRANSLATIONS: Record<Lang, TranslationDict> = {
     recent: {
       title: 'Encuestas recientes',
     },
+    legal: {
+      back: 'Volver',
+      lastUpdated: 'Última actualización',
+      footerNavLabel: 'Información legal',
+      titles: {
+        aviso: 'Aviso legal',
+        privacidad: 'Política de privacidad',
+        cookies: 'Política de cookies',
+        terminos: 'Términos de uso',
+      },
+    },
+    legalNotice: {
+      createBefore: 'Al crear una encuesta aceptas los ',
+      voteBefore: 'Al votar aceptas los ',
+      terms: 'Términos de uso',
+      middle: '. Consulta también la ',
+      privacy: 'Política de privacidad',
+      after: '.',
+      noPersonalData: 'No incluyas datos personales de terceros.',
+    },
     serverErrors: {
       'Failed to load recent polls.': 'No se pudieron cargar las encuestas recientes.',
       'Option links must be 500 characters or fewer.':
@@ -378,6 +433,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = lang;
+    // Pages that set their own title (legal pages) mark it so a language switch keeps it.
+    // Relies on effect order: the child's effect (LegalLayout) runs before this provider effect.
+    if (document.documentElement.dataset.customTitle) return;
     const title = TRANSLATIONS[lang]?.pageTitle || TRANSLATIONS.en.pageTitle;
     document.title = title;
   }, [lang]);

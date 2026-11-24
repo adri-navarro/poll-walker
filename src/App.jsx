@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { fetchRecentPolls } from './api.js';
+import { useI18n } from './i18n.jsx';
 import CreatePoll from './components/CreatePoll.jsx';
 import PollView from './components/PollView.jsx';
 import RecentPolls from './components/RecentPolls.jsx';
@@ -21,6 +22,7 @@ function getInitialTheme() {
 }
 
 export default function App() {
+  const { lang, toggleLang, t } = useI18n();
   const [pollId, setPollId] = useState(() => parsePollIdFromPath(window.location.pathname));
   const [justCreatedId, setJustCreatedId] = useState(null);
   const [recentPolls, setRecentPolls] = useState([]);
@@ -105,15 +107,39 @@ export default function App() {
           <div className="topbar-actions">
             {pollId && (
               <button type="button" className="btn btn-secondary" onClick={navigateHome}>
-                + New Poll
+                {t('nav.newPoll')}
               </button>
             )}
             <button
               type="button"
+              className="lang-toggle"
+              onClick={toggleLang}
+              aria-label={t('nav.switchLanguage')}
+              title={t('nav.switchLanguage')}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M2 12h20" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              </svg>
+              <span>{lang.toUpperCase()}</span>
+            </button>
+            <button
+              type="button"
               className="theme-toggle"
               onClick={toggleTheme}
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={theme === 'dark' ? t('nav.switchToLight') : t('nav.switchToDark')}
+              title={theme === 'dark' ? t('nav.switchToLight') : t('nav.switchToDark')}
             >
               {theme === 'dark' ? (
                 <svg
@@ -167,8 +193,8 @@ export default function App() {
         ) : (
           <>
             <div className="hero">
-              <h1>Create a poll in seconds</h1>
-              <p>Share a link with anyone and watch votes roll in live.</p>
+              <h1>{t('hero.title')}</h1>
+              <p>{t('hero.subtitle')}</p>
             </div>
             <CreatePoll onCreated={(poll) => navigateToPoll(poll.id, true)} />
             <RecentPolls polls={recentPolls} onSelectPoll={(id) => navigateToPoll(id, false)} />
@@ -176,7 +202,7 @@ export default function App() {
         )}
       </main>
 
-      <footer className="footer">Poll Walker — Fast, shareable live polls saved with SQLite.</footer>
+      <footer className="footer">{t('footer')}</footer>
     </div>
   );
 }

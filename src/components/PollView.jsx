@@ -1,26 +1,28 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { fetchPoll, submitVote, subscribeToPollResults, updateVote } from '../api.js';
+import { useI18n } from '../i18n.jsx';
 
-function formatLinkLabel(url) {
+function formatLinkLabel(url, fallbackLabel) {
   try {
     const parsed = new URL(url);
     return parsed.hostname.replace(/^www\./, '');
   } catch {
-    return 'More info';
+    return fallbackLabel;
   }
 }
 
 export default function PollView({ pollId, justCreated, onCreateNew }) {
+  const { t, translateServerError } = useI18n();
   const [poll, setPoll] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [liveStatus, setLiveStatus] = useState('connecting');
-  const [voteNotice, setVoteNotice] = useState('');
+  const [voteNoticeKey, setVoteNoticeKey] = useState('');
 
   const shareUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
@@ -30,10 +32,10 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    setError('');
+    setError(null);
     setSelectedIds([]);
     setIsEditing(false);
-    setVoteNotice('');
+    setVoteNoticeKey('');
 
     fetchPoll(pollId)
       .then((data) => {
@@ -43,7 +45,7 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
       })
       .catch((err) => {
         if (!active) return;
-        setError(err.message || 'Could not load poll.');
+        setError({ serverMessage: err.message, fallbackKey: 'poll.errorLoadFailed' });
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -88,20 +90,20 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
     setSelectedIds(poll.votedOptionIds || []);
     setIsEditing(true);
     setShowResults(false);
-    setError('');
-    setVoteNotice('');
+    setError(null);
+    setVoteNoticeKey('');
   };
 
   const handleBackToVote = () => {
     setShowResults(false);
-    setError('');
-    setVoteNotice('');
+    setError(null);
+    setVoteNoticeKey('');
   };
 
   const handleShowResults = () => {
     setIsEditing(false);
     setShowResults(true);
-    setError('');
+    setError(null);
   };
 
   const handleVote = async (e) => {
@@ -109,8 +111,8 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
     if (selectedIds.length === 0) return;
 
     setSubmitting(true);
-    setError('');
-    setVoteNotice('');
+    setError(null);
+    setVoteNoticeKey('');
 
     try {
       const updated = isEditing
@@ -119,15 +121,18 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
       setPoll(updated);
       setIsEditing(false);
       setShowResults(true);
-      setVoteNotice(isEditing ? 'Your vote has been updated!' : 'Your vote has been saved!');
+      setVoteNoticeKey(isEditing ? 'poll.voteUpdated' : 'poll.voteSaved');
     } catch (err) {
       if (err.alreadyVoted && err.poll) {
         setPoll(err.poll);
         setIsEditing(false);
         setShowResults(true);
-        setVoteNotice('You have already voted in this poll. You can edit your vote below.');
+        setVoteNoticeKey('poll.alreadyVotedNotice');
       } else {
-        setError(err.message || (isEditing ? 'Failed to update vote.' : 'Failed to submit vote.'));
+        setError({
+          serverMessage: err.message,
+          fallbackKey: isEditing ? 'poll.errorUpdateVote' : 'poll.errorSubmitVote',
+        });
       }
     } finally {
       setSubmitting(false);
@@ -153,7 +158,7 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
     try {
       await navigator.share({
         title: poll.question,
-        text: `Vote on this poll: ${poll.question}`,
+        text: t('poll.shareText', { question: poll.question }),
         url: shareUrl,
       });
     } catch {
@@ -161,21 +166,26 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
     }
   };
 
+  const errorMessage = error
+    ? translateServerError(error.serverMessage, error.fallbackKey)
+    : '';
+  const voteNotice = voteNoticeKey ? t(voteNoticeKey) : '';
+
   if (loading) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
-        <p style={{ color: 'var(--text-muted)', margin: 0 }}>Loading poll...</p>
+        <p style={{ color: 'var(--text-muted)', margin: 0 }}>{t('poll.loading')}</p>
       </div>
     );
   }
 
-  if (error && !poll) {
+  if (errorMessage && !poll) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
-        <h2 style={{ marginTop: 0 }}>Poll not found</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem' }}>{error}</p>
+        <h2 style={{ marginTop: 0 }}>{t('poll.notFoundTitle')}</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem' }}>{errorMessage}</p>
         <button type="button" className="btn btn-primary" onClick={onCreateNew}>
-          Create a New Poll
+          {t('poll.createNew')}
         </button>
       </div>
     );
@@ -186,30 +196,27 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
 
   return (
     <div className="card">
-      {justCreated && (
-        <div className="alert alert-success">
-          Poll created! Copy the link below and share it with anyone to start collecting votes.
-        </div>
-      )}
+      {justCreated && <div className="alert alert-success">{t('poll.justCreated')}</div>}
 
       {voteNotice && <div className="alert alert-info">{voteNotice}</div>}
-      {error && (
+      {errorMessage && (
         <div className="alert alert-error" role="alert">
-          {error}
+          {errorMessage}
         </div>
       )}
 
       <div className="poll-header">
         <div className="poll-meta">
           <span className="badge badge-primary">
-            {poll.allowMultiple ? 'Multiple choice' : 'Single choice'}
+            {poll.allowMultiple ? t('poll.multipleChoice') : t('poll.singleChoice')}
           </span>
           <span className="badge">
-            {poll.totalVoters} {poll.totalVoters === 1 ? 'voter' : 'voters'}
+            {poll.totalVoters}{' '}
+            {poll.totalVoters === 1 ? t('poll.voterSingular') : t('poll.voterPlural')}
           </span>
           {liveStatus === 'connected' && (
             <span className="badge badge-live">
-              <span className="live-dot" /> Live results
+              <span className="live-dot" /> {t('poll.liveResults')}
             </span>
           )}
         </div>
@@ -262,7 +269,7 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
                           <polyline points="15 3 21 3 21 9" />
                           <line x1="10" y1="14" x2="21" y2="3" />
                         </svg>
-                        <span>{formatLinkLabel(option.url)}</span>
+                        <span>{formatLinkLabel(option.url, t('poll.moreInfo'))}</span>
                       </a>
                     )}
                   </div>
@@ -277,7 +284,7 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
               className="btn btn-ghost"
               onClick={handleShowResults}
             >
-              {isEditing ? 'Cancel' : 'Show Results'}
+              {isEditing ? t('poll.cancel') : t('poll.showResults')}
             </button>
             <button
               type="submit"
@@ -286,11 +293,11 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
             >
               {submitting
                 ? isEditing
-                  ? 'Updating Vote...'
-                  : 'Saving Vote...'
+                  ? t('poll.updatingVote')
+                  : t('poll.savingVote')
                 : isEditing
-                  ? 'Update Vote'
-                  : 'Submit Vote'}
+                  ? t('poll.updateVote')
+                  : t('poll.submitVote')}
             </button>
           </div>
         </form>
@@ -311,9 +318,9 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
                     <div className="result-label-group">
                       <div className="result-label">
                         <span>{option.label}</span>
-                        {isVoted && <span className="your-vote-tag">Your vote</span>}
+                        {isVoted && <span className="your-vote-tag">{t('poll.yourVote')}</span>}
                         {isLeader && poll.totalVoters > 0 && (
-                          <span className="leader-tag">Leading</span>
+                          <span className="leader-tag">{t('poll.leading')}</span>
                         )}
                       </div>
                       {(option.details || option.url) && (
@@ -343,14 +350,15 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
                                 <polyline points="15 3 21 3 21 9" />
                                 <line x1="10" y1="14" x2="21" y2="3" />
                               </svg>
-                              <span>{formatLinkLabel(option.url)}</span>
+                              <span>{formatLinkLabel(option.url, t('poll.moreInfo'))}</span>
                             </a>
                           )}
                         </div>
                       )}
                     </div>
                     <div className="result-stats">
-                      {option.votes} {option.votes === 1 ? 'vote' : 'votes'}
+                      {option.votes}{' '}
+                      {option.votes === 1 ? t('poll.voteSingular') : t('poll.votePlural')}
                       <strong>{option.percentage}%</strong>
                     </div>
                   </div>
@@ -372,7 +380,7 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
                 className="btn btn-primary"
                 onClick={handleBackToVote}
               >
-                ← Back to Vote
+                {t('poll.backToVote')}
               </button>
             ) : (
               <button
@@ -380,18 +388,18 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
                 className="btn btn-secondary"
                 onClick={handleStartEdit}
               >
-                Edit Vote
+                {t('poll.editVote')}
               </button>
             )}
             <button type="button" className="btn btn-ghost" onClick={onCreateNew}>
-              + Create Your Own Poll
+              {t('poll.createOwnPoll')}
             </button>
           </div>
         </div>
       )}
 
       <div className="share-box">
-        <div className="share-box-label">Share this poll</div>
+        <div className="share-box-label">{t('poll.shareLabel')}</div>
         <div className="share-row">
           <input
             id="share-url-input"
@@ -402,11 +410,11 @@ export default function PollView({ pollId, justCreated, onCreateNew }) {
             onFocus={(e) => e.target.select()}
           />
           <button type="button" className="btn btn-primary" onClick={handleCopyLink}>
-            {copied ? 'Copied!' : 'Copy Link'}
+            {copied ? t('poll.copied') : t('poll.copyLink')}
           </button>
           {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
             <button type="button" className="btn btn-secondary" onClick={handleNativeShare}>
-              Share
+              {t('poll.share')}
             </button>
           )}
         </div>

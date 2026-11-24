@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { createPoll } from '../api.js';
+import { useI18n } from '../i18n.jsx';
 
 function createEmptyOption() {
   return { label: '', url: '', details: '', showExtra: false };
 }
 
 export default function CreatePoll({ onCreated }) {
+  const { t, translateServerError } = useI18n();
   const [question, setQuestion] = useState('');
   const [description, setDescription] = useState('');
   const [options, setOptions] = useState([createEmptyOption(), createEmptyOption()]);
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
 
   const handleOptionFieldChange = (index, field, value) => {
     setOptions((prev) =>
@@ -37,7 +39,7 @@ export default function CreatePoll({ onCreated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError(null);
 
     const trimmedQuestion = question.trim();
     const cleanedOptions = options
@@ -49,11 +51,11 @@ export default function CreatePoll({ onCreated }) {
       .filter((o) => o.label);
 
     if (!trimmedQuestion) {
-      setError('Please enter a question for your poll.');
+      setError({ key: 'create.errorQuestionRequired' });
       return;
     }
     if (cleanedOptions.length < 2) {
-      setError('Please fill in at least 2 options.');
+      setError({ key: 'create.errorMinOptions' });
       return;
     }
 
@@ -67,23 +69,29 @@ export default function CreatePoll({ onCreated }) {
       });
       onCreated(poll);
     } catch (err) {
-      setError(err.message || 'Could not create poll.');
+      setError({ serverMessage: err.message, fallbackKey: 'create.errorCreateFailed' });
     } finally {
       setSubmitting(false);
     }
   };
 
+  const errorMessage = error
+    ? error.key
+      ? t(error.key)
+      : translateServerError(error.serverMessage, error.fallbackKey)
+    : '';
+
   return (
     <form className="card" onSubmit={handleSubmit}>
-      {error && (
+      {errorMessage && (
         <div className="alert alert-error" role="alert">
-          {error}
+          {errorMessage}
         </div>
       )}
 
       <div className="form-group">
         <label className="form-label" htmlFor="poll-question">
-          <span>Poll Question</span>
+          <span>{t('create.questionLabel')}</span>
           <span className="form-hint">{question.length}/280</span>
         </label>
         <input
@@ -91,7 +99,7 @@ export default function CreatePoll({ onCreated }) {
           className="input"
           type="text"
           maxLength={280}
-          placeholder="e.g., Where should we go for team lunch on Friday?"
+          placeholder={t('create.questionPlaceholder')}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           required
@@ -100,14 +108,14 @@ export default function CreatePoll({ onCreated }) {
 
       <div className="form-group">
         <label className="form-label" htmlFor="poll-description">
-          <span>Description</span>
-          <span className="form-hint">Optional</span>
+          <span>{t('create.descriptionLabel')}</span>
+          <span className="form-hint">{t('create.optional')}</span>
         </label>
         <textarea
           id="poll-description"
           className="textarea"
           maxLength={500}
-          placeholder="Add extra context or instructions for voters..."
+          placeholder={t('create.descriptionPlaceholder')}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
@@ -115,7 +123,7 @@ export default function CreatePoll({ onCreated }) {
 
       <div className="form-group">
         <div className="form-label">
-          <span>Answer Options</span>
+          <span>{t('create.optionsLabel')}</span>
           <span className="form-hint">{options.length}/12</span>
         </div>
 
@@ -131,7 +139,7 @@ export default function CreatePoll({ onCreated }) {
                     className="input"
                     type="text"
                     maxLength={160}
-                    placeholder={`Option ${idx + 1}`}
+                    placeholder={t('create.optionPlaceholder', { n: idx + 1 })}
                     value={opt.label}
                     onChange={(e) => handleOptionFieldChange(idx, 'label', e.target.value)}
                     onKeyDown={(e) => {
@@ -145,9 +153,9 @@ export default function CreatePoll({ onCreated }) {
                     type="button"
                     className={`btn-info-toggle ${isExtraOpen ? 'active' : ''}`}
                     onClick={() => toggleOptionExtra(idx)}
-                    title={isExtraOpen ? 'Hide extra info' : 'Add link or details'}
+                    title={isExtraOpen ? t('create.hideExtraInfo') : t('create.addExtraInfo')}
                     aria-expanded={isExtraOpen}
-                    aria-label={`Add link or info for option ${idx + 1}`}
+                    aria-label={t('create.addExtraInfoAria', { n: idx + 1 })}
                   >
                     <svg
                       width="15"
@@ -163,15 +171,15 @@ export default function CreatePoll({ onCreated }) {
                       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
                     </svg>
-                    <span>Info</span>
+                    <span>{t('create.infoButton')}</span>
                   </button>
                   <button
                     type="button"
                     className="btn-icon"
                     onClick={() => removeOption(idx)}
                     disabled={options.length <= 2}
-                    title="Remove option"
-                    aria-label={`Remove option ${idx + 1}`}
+                    title={t('create.removeOption')}
+                    aria-label={t('create.removeOptionAria', { n: idx + 1 })}
                   >
                     ✕
                   </button>
@@ -184,7 +192,7 @@ export default function CreatePoll({ onCreated }) {
                       type="text"
                       inputMode="url"
                       maxLength={500}
-                      placeholder="Link (optional) — e.g. https://restaurant.com/menu"
+                      placeholder={t('create.linkPlaceholder')}
                       value={opt.url}
                       onChange={(e) => handleOptionFieldChange(idx, 'url', e.target.value)}
                     />
@@ -192,7 +200,7 @@ export default function CreatePoll({ onCreated }) {
                       className="input input-sm"
                       type="text"
                       maxLength={240}
-                      placeholder="Extra note (optional) — e.g. address, price, details"
+                      placeholder={t('create.detailsPlaceholder')}
                       value={opt.details}
                       onChange={(e) => handleOptionFieldChange(idx, 'details', e.target.value)}
                     />
@@ -206,7 +214,7 @@ export default function CreatePoll({ onCreated }) {
         {options.length < 12 && (
           <div style={{ marginTop: '0.75rem' }}>
             <button type="button" className="btn btn-secondary" onClick={addOption}>
-              + Add Option
+              {t('create.addOption')}
             </button>
           </div>
         )}
@@ -214,29 +222,29 @@ export default function CreatePoll({ onCreated }) {
 
       <div className="form-group">
         <div className="form-label">
-          <span>Voting Type</span>
+          <span>{t('create.votingType')}</span>
         </div>
-        <div className="segmented" role="group" aria-label="Voting type">
+        <div className="segmented" role="group" aria-label={t('create.votingType')}>
           <button
             type="button"
             className={`segmented-btn ${!allowMultiple ? 'active' : ''}`}
             onClick={() => setAllowMultiple(false)}
           >
-            Single Choice
+            {t('create.singleChoice')}
           </button>
           <button
             type="button"
             className={`segmented-btn ${allowMultiple ? 'active' : ''}`}
             onClick={() => setAllowMultiple(true)}
           >
-            Multiple Choice
+            {t('create.multipleChoice')}
           </button>
         </div>
       </div>
 
       <div className="form-footer">
         <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? 'Creating Poll...' : 'Create & Get Share Link'}
+          {submitting ? t('create.submitting') : t('create.submit')}
         </button>
       </div>
     </form>

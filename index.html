@@ -15,6 +15,21 @@
               ? 'dark'
               : 'light';
           document.documentElement.dataset.theme = theme;
+          var savedLang = localStorage.getItem('lang');
+          var lang = savedLang === 'en' || savedLang === 'es' ? savedLang : null;
+          if (!lang) {
+            var langs = Array.isArray(navigator.languages) && navigator.languages.length
+              ? navigator.languages
+              : [navigator.language || 'en'];
+            for (var i = 0; i < langs.length; i++) {
+              var base = String(langs[i] || '').toLowerCase().split('-')[0];
+              if (base === 'es' || base === 'en') {
+                lang = base;
+                break;
+              }
+            }
+          }
+          document.documentElement.lang = lang || 'en';
         } catch (e) {}
       })();
     </script>

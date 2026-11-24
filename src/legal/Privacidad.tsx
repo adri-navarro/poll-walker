@@ -8,8 +8,7 @@ function Es() {
     <>
       <h2>1. Responsable del tratamiento</h2>
       <ul>
-        <li>Responsable: {LEGAL.OWNER_NAME} (NIF/CIF: {LEGAL.OWNER_NIF})</li>
-        <li>Domicilio: {LEGAL.OWNER_ADDRESS}</li>
+        <li>Responsable: el sitio {LEGAL.SITE_DOMAIN}</li>
         <li>
           Contacto para cuestiones de privacidad: <Email />
         </li>
@@ -135,8 +134,10 @@ function Es() {
 
       <h2>5. Transferencias internacionales</h2>
       <p>
-        No se prevén transferencias internacionales: el proveedor aloja los datos en{' '}
-        {LEGAL.HOSTING_PROVIDER_LOCATION}.
+        El sitio se aloja en un servidor de {LEGAL.HOSTING_PROVIDER}. No realizamos transferencias
+        internacionales de datos por nuestra parte ni utilizamos servicios de terceros fuera del
+        Espacio Económico Europeo (no hay analítica, CDN, publicidad ni otros encargados). Si esto
+        cambiara, se actualizará esta política.
       </p>
 
       <h2>6. Decisiones automatizadas y perfiles</h2>
@@ -217,8 +218,7 @@ function En() {
       </p>
       <h2>1. Data controller</h2>
       <ul>
-        <li>Controller: {LEGAL.OWNER_NAME} (Tax ID: {LEGAL.OWNER_NIF})</li>
-        <li>Address: {LEGAL.OWNER_ADDRESS}</li>
+        <li>Controller: the site {LEGAL.SITE_DOMAIN}</li>
         <li>
           Privacy contact: <Email />
         </li>
@@ -340,8 +340,10 @@ function En() {
 
       <h2>5. International transfers</h2>
       <p>
-        No international transfers are expected: the provider hosts the data in{' '}
-        {LEGAL.HOSTING_PROVIDER_LOCATION}.
+        The site is hosted on a {LEGAL.HOSTING_PROVIDER} server. We do not carry out international
+        data transfers ourselves or use third-party services outside the European Economic Area
+        (there is no analytics, CDN, advertising or other processors). If this changes, this
+        policy will be updated.
       </p>
 
       <h2>6. Automated decisions and profiling</h2>

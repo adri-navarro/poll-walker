@@ -13,14 +13,12 @@ function Es() {
         sitio web <strong>{LEGAL.SITE_DOMAIN}</strong> (en adelante, «Poll Walker» o «el sitio»):
       </p>
       <ul>
-        <li>Titular: {LEGAL.OWNER_NAME}</li>
-        <li>NIF/CIF: {LEGAL.OWNER_NIF}</li>
-        <li>Domicilio: {LEGAL.OWNER_ADDRESS}</li>
+        <li>Titular y responsable del sitio: {LEGAL.SITE_DOMAIN}</li>
         <li>
           Correo electrónico de contacto: <Email />
         </li>
         <li>
-          Proveedor de alojamiento: {LEGAL.HOSTING_PROVIDER} ({LEGAL.HOSTING_PROVIDER_LOCATION})
+          Proveedor de alojamiento: {LEGAL.HOSTING_PROVIDER}
         </li>
       </ul>
 
@@ -93,14 +91,12 @@ function En() {
         site&rdquo;):
       </p>
       <ul>
-        <li>Owner: {LEGAL.OWNER_NAME}</li>
-        <li>Tax ID (NIF/CIF): {LEGAL.OWNER_NIF}</li>
-        <li>Address: {LEGAL.OWNER_ADDRESS}</li>
+        <li>Owner and operator of the site: {LEGAL.SITE_DOMAIN}</li>
         <li>
           Contact email: <Email />
         </li>
         <li>
-          Hosting provider: {LEGAL.HOSTING_PROVIDER} ({LEGAL.HOSTING_PROVIDER_LOCATION})
+          Hosting provider: {LEGAL.HOSTING_PROVIDER}
         </li>
       </ul>
 

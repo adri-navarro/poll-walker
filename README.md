@@ -120,7 +120,7 @@ Configure the server using environment variables (or `.env` when using Docker Co
 
 The site ships Spanish/English legal pages (Aviso legal, Política de privacidad, Política de cookies, Términos de uso) as a starting point for a site published in Spain. They are **not legal advice**; have them reviewed by a lawyer.
 
-- **Fill in** `src/legal.config.ts`: every `[PENDIENTE: ...]` value (owner name, NIF/CIF, address, contact email, hosting datacenter location). Set `LAST_UPDATED` when texts change and keep `RETENTION_MONTHS` in sync with `RETENTION_DAYS`. No owner details live anywhere else.
+- **Config:** `src/legal.config.ts` holds the domain, contact email and hosting provider; no placeholders remain and no personal owner details such as name, NIF/CIF or address are kept anywhere. Set `LAST_UPDATED` when texts change and keep `RETENTION_MONTHS` in sync with `RETENTION_DAYS`.
 - **Routes:** `/aviso-legal`, `/privacidad`, `/cookies`, `/terminos` (linked from the footer and near the create/vote buttons).
 - **No cookie banner:** the only storage is the first-party `pw_voter_id` cookie (set when voting, needed to prevent duplicate votes and edit votes) and the `theme`/`lang` preferences in `localStorage`. All are strictly necessary or user-chosen preferences, exempt from consent under LSSI art. 22.2. If you add analytics or any third-party script, you must add consent handling and update the texts.
 

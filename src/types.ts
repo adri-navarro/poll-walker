@@ -7,6 +7,13 @@ export interface PollOption {
   percentage: number;
 }
 
+export interface PollVoter {
+  // Empty for votes cast before names were required
+  name: string;
+  optionIds: number[];
+  isYou: boolean;
+}
+
 export interface Poll {
   id: string;
   question: string;
@@ -17,6 +24,7 @@ export interface Poll {
   totalVotes: number;
   hasVoted: boolean;
   votedOptionIds: number[];
+  voters: PollVoter[];
   options: PollOption[];
 }
 
@@ -45,6 +53,7 @@ export interface CreatePollPayload {
 export interface PollResultsUpdate {
   totalVoters: number;
   totalVotes: number;
+  voters: PollVoter[];
   options: PollOption[];
 }
 

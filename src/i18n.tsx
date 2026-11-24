@@ -24,7 +24,6 @@ type TranslationDict = {
     title: string;
     subtitle: string;
   };
-  footer: string;
   create: {
     questionLabel: string;
     questionPlaceholder: string;
@@ -86,6 +85,14 @@ type TranslationDict = {
     copyLink: string;
     share: string;
     shareText: string;
+    nameLabel: string;
+    namePlaceholder: string;
+    nameHelp: string;
+    errorNameRequired: string;
+    votingAs: string;
+    votersTitle: string;
+    anonymous: string;
+    you: string;
   };
   recent: {
     title: string;
@@ -104,6 +111,7 @@ type TranslationDict = {
     privacy: string;
     after: string;
     noPersonalData: string;
+    votePublic: string;
   };
   serverErrors: Record<string, string>;
 };
@@ -122,7 +130,6 @@ const TRANSLATIONS: Record<Lang, TranslationDict> = {
       title: 'Create a poll in seconds',
       subtitle: 'Share a link with anyone and watch votes roll in live.',
     },
-    footer: 'Poll Walker — Fast, shareable live polls saved with SQLite.',
     create: {
       questionLabel: 'Poll Question',
       questionPlaceholder: 'e.g., Where should we go for team lunch on Friday?',
@@ -185,6 +192,14 @@ const TRANSLATIONS: Record<Lang, TranslationDict> = {
       copyLink: 'Copy Link',
       share: 'Share',
       shareText: 'Vote on this poll: {question}',
+      nameLabel: 'Your name',
+      namePlaceholder: 'Name or nickname',
+      nameHelp: 'Your name will be shown publicly next to your vote. You can use a nickname.',
+      errorNameRequired: 'Please enter your name.',
+      votingAs: 'Voting as {name}',
+      votersTitle: 'Who voted',
+      anonymous: 'Anonymous',
+      you: 'you',
     },
     recent: {
       title: 'Recent Polls',
@@ -208,6 +223,7 @@ const TRANSLATIONS: Record<Lang, TranslationDict> = {
       privacy: 'Privacy policy',
       after: '.',
       noPersonalData: "Don't include other people's personal data.",
+      votePublic: 'Your name and your vote will be visible to anyone who can access this poll, including via the home page list of recent polls.',
     },
     serverErrors: {
       'Failed to load recent polls.': 'Failed to load recent polls.',
@@ -230,6 +246,9 @@ const TRANSLATIONS: Record<Lang, TranslationDict> = {
       'This poll only allows selecting one option.': 'This poll only allows selecting one option.',
       'One or more selected options are invalid.': 'One or more selected options are invalid.',
       'You have not voted on this poll yet.': 'You have not voted on this poll yet.',
+      'Please enter your name.': 'Please enter your name.',
+      'Name must be 40 characters or fewer.': 'Name must be 40 characters or fewer.',
+      'That name has already voted on this poll.': 'That name has already voted on this poll.',
       invalidLinkUrl: 'Invalid link URL: "{url}".',
     },
   },
@@ -246,7 +265,6 @@ const TRANSLATIONS: Record<Lang, TranslationDict> = {
       title: 'Crea una encuesta en segundos',
       subtitle: 'Comparte un enlace con quien quieras y mira los votos en tiempo real.',
     },
-    footer: 'Poll Walker — Encuestas en vivo rápidas y fáciles de compartir con SQLite.',
     create: {
       questionLabel: 'Pregunta de la encuesta',
       questionPlaceholder: 'ej., ¿Dónde deberíamos ir a comer el viernes?',
@@ -309,6 +327,15 @@ const TRANSLATIONS: Record<Lang, TranslationDict> = {
       copyLink: 'Copiar enlace',
       share: 'Compartir',
       shareText: 'Vota en esta encuesta: {question}',
+      nameLabel: 'Tu nombre',
+      namePlaceholder: 'Nombre o apodo',
+      nameHelp:
+        'Tu nombre se mostrará públicamente junto a tu voto. Puedes usar un apodo.',
+      errorNameRequired: 'Por favor, escribe tu nombre.',
+      votingAs: 'Votando como {name}',
+      votersTitle: 'Quién ha votado',
+      anonymous: 'Anónimo',
+      you: 'tú',
     },
     recent: {
       title: 'Encuestas recientes',
@@ -332,6 +359,7 @@ const TRANSLATIONS: Record<Lang, TranslationDict> = {
       privacy: 'Política de privacidad',
       after: '.',
       noPersonalData: 'No incluyas datos personales de terceros.',
+      votePublic: 'Tu nombre y tu voto serán visibles para cualquiera que pueda acceder a esta encuesta, también desde la lista de encuestas recientes de la página de inicio.',
     },
     serverErrors: {
       'Failed to load recent polls.': 'No se pudieron cargar las encuestas recientes.',
@@ -362,6 +390,9 @@ const TRANSLATIONS: Record<Lang, TranslationDict> = {
       'One or more selected options are invalid.':
         'Una o más opciones seleccionadas no son válidas.',
       'You have not voted on this poll yet.': 'Todavía no has votado en esta encuesta.',
+      'Please enter your name.': 'Por favor, escribe tu nombre.',
+      'Name must be 40 characters or fewer.': 'El nombre debe tener 40 caracteres o menos.',
+      'That name has already voted on this poll.': 'Ese nombre ya ha votado en esta encuesta.',
       invalidLinkUrl: 'Enlace no válido: "{url}".',
     },
   },

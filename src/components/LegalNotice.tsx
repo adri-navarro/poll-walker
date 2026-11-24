@@ -5,12 +5,15 @@ import AppLink from './AppLink.tsx';
 export default function LegalNotice({ action }: { action: 'create' | 'vote' }) {
   const { t } = useI18n();
   return (
-    <p className="legal-notice">
+    <>
+      {action === 'vote' && <p className="legal-notice legal-hint">{t('legalNotice.votePublic')}</p>}
+      <p className="legal-notice">
       {t(action === 'create' ? 'legalNotice.createBefore' : 'legalNotice.voteBefore')}
       <AppLink href="/terminos">{t('legalNotice.terms')}</AppLink>
       {t('legalNotice.middle')}
       <AppLink href="/privacidad">{t('legalNotice.privacy')}</AppLink>
       {t('legalNotice.after')}
-    </p>
+      </p>
+    </>
   );
 }

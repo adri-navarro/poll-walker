@@ -18,6 +18,12 @@ export interface PollOptionRecord {
   percentage: number;
 }
 
+export interface PollVoterRecord {
+  name: string;
+  optionIds: number[];
+  isYou: boolean;
+}
+
 export interface PollRecord {
   id: string;
   question: string;
@@ -28,6 +34,7 @@ export interface PollRecord {
   totalVotes: number;
   hasVoted: boolean;
   votedOptionIds: number[];
+  voters: PollVoterRecord[];
   options: PollOptionRecord[];
 }
 
@@ -63,12 +70,14 @@ export interface VoteParams {
 
 export interface RecordVoteParams extends VoteParams {
   voterToken: string;
+  voterName: unknown;
 }
 
 export type RecordVoteResult =
   | { status: 'not_found' }
   | { status: 'invalid'; message: string }
   | { status: 'duplicate'; poll: PollRecord | null }
+  | { status: 'name_taken'; message: string }
   | { status: 'ok'; poll: PollRecord | null };
 
 export type UpdateVoteResult =
@@ -112,6 +121,16 @@ interface VoterTokenRow {
 }
 
 interface OptionIdRow {
+  option_id: number;
+}
+
+interface VoterRecordRow {
+  voter_token: string;
+  voter_name: string;
+}
+
+interface VoterVoteRow {
+  voter_token: string;
   option_id: number;
 }
 
@@ -180,8 +199,14 @@ db.exec(`
 `);
 
 // Migrate existing databases that were created before option details/url existed
+// and before voter names existed
 const optionColumns = new Set(
   (db.prepare('PRAGMA table_info(options)').all() as unknown as TableInfoRow[]).map(
+    (col) => col.name
+  )
+);
+const voterColumns = new Set(
+  (db.prepare('PRAGMA table_info(voter_records)').all() as unknown as TableInfoRow[]).map(
     (col) => col.name
   )
 );
@@ -190,6 +215,46 @@ if (!optionColumns.has('details')) {
 }
 if (!optionColumns.has('url')) {
   db.exec("ALTER TABLE options ADD COLUMN url TEXT NOT NULL DEFAULT ''");
+}
+
+if (!voterColumns.has('voter_name')) {
+  db.exec("ALTER TABLE voter_records ADD COLUMN voter_name TEXT NOT NULL DEFAULT ''");
+}
+if (!voterColumns.has('voter_name_key')) {
+  db.exec("ALTER TABLE voter_records ADD COLUMN voter_name_key TEXT NOT NULL DEFAULT ''");
+}
+// Case-insensitive unique names per poll; legacy (nameless) rows have an empty key and are exempt.
+db.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_voter_records_poll_name
+    ON voter_records (poll_id, voter_name_key) WHERE voter_name_key <> ''
+`);
+
+const MAX_VOTER_NAME_LENGTH = 40;
+export const NAME_TAKEN_MESSAGE = 'That name has already voted on this poll.';
+
+export type NormalizeVoterNameResult =
+  | { valid: true; name: string; key: string }
+  | { valid: false; message: string };
+
+// Trims, NFKC-normalises and collapses whitespace. Names containing invisible/format
+// characters are rejected (they would let two identical-looking names coexist). The key used
+// for uniqueness is the lowercased form with two extra folds: ß -> ss and final sigma ς -> σ.
+// Accents are deliberately kept (José and Jose are different people).
+export function normalizeVoterName(raw: unknown): NormalizeVoterNameResult {
+  const missing = { valid: false, message: 'Please enter your name.' } as const;
+  if (typeof raw !== 'string') return missing;
+
+  const trimmed = raw.normalize('NFKC').trim();
+  if (/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\u2800\u3164\u115F\u1160]/u.test(trimmed)) return missing;
+
+  const name = trimmed.replace(/\s+/gu, ' ');
+  if (!/[\p{L}\p{N}]/u.test(name)) return missing;
+  if (Array.from(name).length > MAX_VOTER_NAME_LENGTH) {
+    return { valid: false, message: 'Name must be 40 characters or fewer.' };
+  }
+
+  const key = name.toLocaleLowerCase('en').replace(/ß/g, 'ss').replace(/ς/g, 'σ');
+  return { valid: true, name, key };
 }
 
 function generatePollId(): string {
@@ -333,10 +398,12 @@ export function getPoll(id: string, voterContext: VoterContext | null = null): P
 
   let hasVoted = false;
   let votedOptionIds: number[] = [];
+  let matchedToken: string | null = null;
+  // Only a cookie-token match marks a voter as "you"; an IP match still counts as voted.
+  let cookieToken: string | null = null;
 
   if (voterContext) {
     const { voterToken, ipHash, enforceIp = true } = voterContext;
-    let matchedToken: string | null = null;
 
     if (voterToken) {
       const byToken = db
@@ -345,6 +412,7 @@ export function getPoll(id: string, voterContext: VoterContext | null = null): P
       if (byToken) {
         hasVoted = true;
         matchedToken = byToken.voter_token;
+        cookieToken = byToken.voter_token;
       }
     }
 
@@ -366,6 +434,26 @@ export function getPoll(id: string, voterContext: VoterContext | null = null): P
     }
   }
 
+  const voterRows = db
+    .prepare(
+      'SELECT voter_token, voter_name FROM voter_records WHERE poll_id = ? ORDER BY created_at ASC, rowid ASC'
+    )
+    .all(id) as unknown as VoterRecordRow[];
+  const voteRows = db
+    .prepare('SELECT voter_token, option_id FROM votes WHERE poll_id = ? ORDER BY id ASC')
+    .all(id) as unknown as VoterVoteRow[];
+  const optionIdsByToken = new Map<string, number[]>();
+  for (const row of voteRows) {
+    const list = optionIdsByToken.get(row.voter_token) ?? [];
+    list.push(Number(row.option_id));
+    optionIdsByToken.set(row.voter_token, list);
+  }
+  const voters: PollVoterRecord[] = voterRows.map((row) => ({
+    name: row.voter_name,
+    optionIds: optionIdsByToken.get(row.voter_token) ?? [],
+    isYou: cookieToken !== null && row.voter_token === cookieToken,
+  }));
+
   const denominator = poll.allow_multiple ? totalVoters : totalVotes;
 
   return {
@@ -378,6 +466,7 @@ export function getPoll(id: string, voterContext: VoterContext | null = null): P
     totalVotes,
     hasVoted,
     votedOptionIds,
+    voters,
     options: optionRows.map((row) => {
       const count = Number(row.votes);
       const percentage = denominator > 0 ? Math.round((count / denominator) * 1000) / 10 : 0;
@@ -448,6 +537,7 @@ export function recordVote({
   pollId,
   optionIds,
   voterToken,
+  voterName,
   ipHash,
   enforceIp = true,
 }: RecordVoteParams): RecordVoteResult {
@@ -464,6 +554,11 @@ export function recordVote({
     return { status: 'invalid', message: validation.message };
   }
   const { uniqueOptionIds } = validation;
+
+  const normalizedName = normalizeVoterName(voterName);
+  if (!normalizedName.valid) {
+    return { status: 'invalid', message: normalizedName.message };
+  }
 
   const now = new Date().toISOString();
 
@@ -487,9 +582,17 @@ export function recordVote({
       };
     }
 
+    const nameTaken = db
+      .prepare('SELECT 1 FROM voter_records WHERE poll_id = ? AND voter_name_key = ?')
+      .get(pollId, normalizedName.key);
+    if (nameTaken) {
+      db.exec('ROLLBACK');
+      return { status: 'name_taken', message: NAME_TAKEN_MESSAGE };
+    }
+
     db.prepare(
-      'INSERT INTO voter_records (poll_id, voter_token, ip_hash, created_at) VALUES (?, ?, ?, ?)'
-    ).run(pollId, voterToken, ipHash, now);
+      'INSERT INTO voter_records (poll_id, voter_token, ip_hash, created_at, voter_name, voter_name_key) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(pollId, voterToken, ipHash, now, normalizedName.name, normalizedName.key);
 
     const insertVote = db.prepare(
       'INSERT INTO votes (poll_id, option_id, voter_token, created_at) VALUES (?, ?, ?, ?)'
@@ -546,6 +649,8 @@ export function updateVote({
       }
     }
 
+    // Known, pre-existing and accepted: on a shared network (same IP hash) an IP-matched edit
+    // can overwrite another person's vote. Set ENFORCE_IP_DEDUP=false to disable this matching.
     if (!matchedToken && enforceIp && ipHash) {
       const existingByIp = db
         .prepare('SELECT voter_token FROM voter_records WHERE poll_id = ? AND ip_hash = ?')

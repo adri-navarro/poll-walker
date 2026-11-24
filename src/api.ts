@@ -51,11 +51,11 @@ export async function fetchPoll(id: string): Promise<Poll> {
   return data.poll;
 }
 
-export async function submitVote(id: string, optionIds: number[]): Promise<Poll> {
+export async function submitVote(id: string, optionIds: number[], name: string): Promise<Poll> {
   const res = await fetch(`/api/polls/${encodeURIComponent(id)}/vote`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ optionIds }),
+    body: JSON.stringify({ optionIds, name }),
   });
   const data = (await res.json()) as { poll: Poll } & ApiResponseError;
   if (!res.ok) {

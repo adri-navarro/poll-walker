@@ -71,6 +71,7 @@ function broadcastPollUpdate(pollId: string): void {
   const payload = JSON.stringify({
     totalVoters: publicPoll.totalVoters,
     totalVotes: publicPoll.totalVotes,
+    voters: publicPoll.voters,
     options: publicPoll.options,
   });
 
@@ -223,6 +224,7 @@ app.post('/api/polls/:id/vote', (req: Request<{ id: string }>, res: Response) =>
       pollId: id,
       optionIds,
       voterToken,
+      voterName: body.name,
       ipHash,
       enforceIp: ENFORCE_IP_DEDUP,
     });
@@ -232,6 +234,9 @@ app.post('/api/polls/:id/vote', (req: Request<{ id: string }>, res: Response) =>
     }
     if (result.status === 'invalid') {
       return res.status(400).json({ error: result.message });
+    }
+    if (result.status === 'name_taken') {
+      return res.status(409).json({ error: result.message });
     }
     if (result.status === 'duplicate') {
       return res.status(409).json({

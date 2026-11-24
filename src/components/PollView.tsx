@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   fetchPoll,
   submitVote,
@@ -7,7 +7,7 @@ import {
   type ApiError,
 } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
-import type { LiveConnectionStatus, Poll } from '../types.ts';
+import type { LiveConnectionStatus, Poll, PollVoter } from '../types.ts';
 import LegalNotice from './LegalNotice.tsx';
 
 interface PollViewProps {
@@ -30,6 +30,11 @@ function formatLinkLabel(url: string, fallbackLabel: string): string {
   }
 }
 
+// Name/choice rows of voters, oldest first. The SSE stream never knows which row is the viewer.
+function withYouMarker(voters: PollVoter[], youIndex: number): PollVoter[] {
+  return voters.map((v, i) => ({ ...v, isYou: i === youIndex }));
+}
+
 export default function PollView({ pollId, justCreated, onCreateNew }: PollViewProps) {
   const { t, translateServerError } = useI18n();
   const [poll, setPoll] = useState<Poll | null>(null);
@@ -42,6 +47,27 @@ export default function PollView({ pollId, justCreated, onCreateNew }: PollViewP
   const [copied, setCopied] = useState(false);
   const [liveStatus, setLiveStatus] = useState<LiveConnectionStatus>('connecting');
   const [voteNoticeKey, setVoteNoticeKey] = useState('');
+  const [voterName, setVoterName] = useState('');
+  // Index of the viewer's row in poll.voters (-1: not voted). Voters are append-only, so the
+  // index stays valid across SSE updates, which carry isYou=false on every row.
+  const youIndexRef = useRef(-1);
+  // Rows at or after this index get the entry animation; the initial list does not animate.
+  const animateFromRef = useRef(Number.POSITIVE_INFINITY);
+
+  const applyFullPoll = (data: Poll) => {
+    youIndexRef.current = data.voters.findIndex((v) => v.isYou);
+    if (animateFromRef.current === Number.POSITIVE_INFINITY) {
+      animateFromRef.current = data.voters.length;
+    }
+    setPoll(data);
+  };
+
+  useEffect(() => {
+    // Ignore a stale poll from the previous id while the new one loads, otherwise it would
+    // overwrite the reset below and the new poll's initial rows would animate.
+    if (poll && poll.id !== pollId) return;
+    animateFromRef.current = poll ? poll.voters.length : Number.POSITIVE_INFINITY;
+  });
 
   const shareUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
@@ -55,11 +81,14 @@ export default function PollView({ pollId, justCreated, onCreateNew }: PollViewP
     setSelectedIds([]);
     setIsEditing(false);
     setVoteNoticeKey('');
+    setVoterName('');
+    youIndexRef.current = -1;
+    animateFromRef.current = Number.POSITIVE_INFINITY;
 
     fetchPoll(pollId)
       .then((data) => {
         if (!active) return;
-        setPoll(data);
+        applyFullPoll(data);
         setShowResults(Boolean(data.hasVoted));
       })
       .catch((err: unknown) => {
@@ -80,6 +109,7 @@ export default function PollView({ pollId, justCreated, onCreateNew }: PollViewP
                 ...prev,
                 totalVoters: update.totalVoters,
                 totalVotes: update.totalVotes,
+                voters: withYouMarker(update.voters, youIndexRef.current),
                 options: update.options,
               }
             : prev
@@ -130,6 +160,12 @@ export default function PollView({ pollId, justCreated, onCreateNew }: PollViewP
     e.preventDefault();
     if (selectedIds.length === 0) return;
 
+    const trimmedName = voterName.trim();
+    if (!isEditing && !trimmedName) {
+      setError({ fallbackKey: 'poll.errorNameRequired' });
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     setVoteNoticeKey('');
@@ -137,15 +173,15 @@ export default function PollView({ pollId, justCreated, onCreateNew }: PollViewP
     try {
       const updated = isEditing
         ? await updateVote(pollId, selectedIds)
-        : await submitVote(pollId, selectedIds);
-      setPoll(updated);
+        : await submitVote(pollId, selectedIds, trimmedName);
+      applyFullPoll(updated);
       setIsEditing(false);
       setShowResults(true);
       setVoteNoticeKey(isEditing ? 'poll.voteUpdated' : 'poll.voteSaved');
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       if (apiErr.alreadyVoted && apiErr.poll) {
-        setPoll(apiErr.poll);
+        applyFullPoll(apiErr.poll);
         setIsEditing(false);
         setShowResults(true);
         setVoteNoticeKey('poll.alreadyVotedNotice');
@@ -216,6 +252,8 @@ export default function PollView({ pollId, justCreated, onCreateNew }: PollViewP
 
   const maxVotes = Math.max(0, ...poll.options.map((o) => o.votes));
   const votedSet = new Set(poll.votedOptionIds || []);
+  const optionLabels = new Map(poll.options.map((o) => [o.id, o.label]));
+  const ownName = poll.voters.find((v) => v.isYou)?.name;
 
   return (
     <div className="card">
@@ -299,6 +337,33 @@ export default function PollView({ pollId, justCreated, onCreateNew }: PollViewP
                 </label>
               );
             })}
+          </div>
+
+          <div className="form-group voter-name">
+            {isEditing ? (
+              ownName && <p className="voting-as">{t('poll.votingAs', { name: ownName })}</p>
+            ) : (
+              <>
+                <label className="form-label" htmlFor="voter-name-input">
+                  {t('poll.nameLabel')}
+                </label>
+                <input
+                  id="voter-name-input"
+                  className="input"
+                  type="text"
+                  value={voterName}
+                  onChange={(e) => setVoterName(e.target.value)}
+                  maxLength={40}
+                  required
+                  autoComplete="nickname"
+                  placeholder={t('poll.namePlaceholder')}
+                  aria-describedby="voter-name-help"
+                />
+                <p id="voter-name-help" className="form-hint voter-name-help">
+                  {t('poll.nameHelp')}
+                </p>
+              </>
+            )}
           </div>
 
           <div className="poll-actions">
@@ -396,6 +461,33 @@ export default function PollView({ pollId, justCreated, onCreateNew }: PollViewP
               );
             })}
           </div>
+
+          {poll.voters.length > 0 && (
+            <section className="voters" aria-labelledby="voters-title">
+              <h2 id="voters-title" className="voters-title">
+                {t('poll.votersTitle')}
+              </h2>
+              <ul className="voters-list">
+                {poll.voters.map((voter, index) => (
+                  <li
+                    key={index}
+                    className={`voter-row ${index >= animateFromRef.current ? 'voter-row-enter' : ''}`}
+                  >
+                    <span className="voter-name-text">
+                      {voter.name || t('poll.anonymous')}
+                      {voter.isYou && <span className="voter-you"> ({t('poll.you')})</span>}
+                    </span>
+                    <span className="voter-choices">
+                      {voter.optionIds
+                        .map((id) => optionLabels.get(id))
+                        .filter((label): label is string => Boolean(label))
+                        .join(', ')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <div className="poll-actions">
             {!poll.hasVoted ? (

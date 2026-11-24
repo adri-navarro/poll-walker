@@ -854,10 +854,6 @@ textarea {
 }
 
 /* Legal pages and notices */
-.footer p {
-  margin: 0 0 0.5rem;
-}
-
 .footer-links {
   display: flex;
   flex-wrap: wrap;
@@ -948,4 +944,79 @@ textarea {
 
 .legal-table thead th {
   background: var(--surface-subtle);
+}
+
+.voter-name-help {
+  margin: 0.4rem 0 0;
+}
+
+.voting-as {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.voters {
+  margin-top: 1.5rem;
+}
+
+.voters-title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.voters-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 20rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.voter-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.15rem 1rem;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.voter-row:last-child {
+  border-bottom: 0;
+}
+
+.voter-name-text {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.voter-you {
+  font-weight: 400;
+  color: var(--primary-text);
+}
+
+.voter-choices {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.voter-row-enter {
+  animation: voter-enter 220ms ease-out;
+}
+
+@keyframes voter-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voter-row-enter {
+    animation: none;
+  }
 }

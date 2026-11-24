@@ -232,7 +232,6 @@ export default function App() {
       </main>
 
       <footer className="footer">
-        <p>{t('footer')}</p>
         <nav className="footer-links" aria-label={t('legal.footerNavLabel')}>
           <AppLink href="/aviso-legal">{t('legal.titles.aviso')}</AppLink>
           <span aria-hidden="true">·</span>

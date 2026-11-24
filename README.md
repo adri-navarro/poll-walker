@@ -11,6 +11,7 @@ A fast, lightweight, self-hostable web app for creating and sharing live polls. 
 - **Vote Editing & Deduplication** — Prevents duplicate votes using HTTP-only voter cookies and optional per-poll hashed IP deduplication, while still letting voters edit their vote later.
 - **Easy Sharing** — Generates short shareable URLs (`/poll/:id`) with one-click copy and native Web Share API support.
 - **Recent Polls** — Browse the most recently created polls right from the home page.
+- **Named, public votes** — Voters must enter a name (1–40 characters, unique per poll, case-insensitive). Names and the options each person chose are visible to everyone who can see the poll. The name cannot be changed when editing a vote; votes cast before this feature show as anonymous.
 - **Privacy-minded** — IPs are never stored raw (HMAC-hashed per poll), inactive polls are deleted automatically, and Nginx logs are anonymised. See [Privacy](#privacy).
 - **Light & Dark Mode** — Automatically follows your system theme with a manual toggle persisted in `localStorage`.
 
@@ -132,7 +133,7 @@ The site ships Spanish/English legal pages (Aviso legal, Política de privacidad
 | `GET` | `/api/polls` | List the 12 most recent polls. |
 | `POST` | `/api/polls` | Create a new poll. |
 | `GET` | `/api/polls/:id` | Fetch a poll's details, results, and current voter state. |
-| `POST` | `/api/polls/:id/vote` | Submit a vote. |
+| `POST` | `/api/polls/:id/vote` | Submit a vote (`{ optionIds, name }`; `name` is required). |
 | `PUT` | `/api/polls/:id/vote` | Update an existing vote. |
 | `GET` | `/api/polls/:id/stream` | Subscribe to live poll result updates via SSE. |
 

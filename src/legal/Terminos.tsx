@@ -26,8 +26,8 @@ function Es() {
       <p>
         Eres el único responsable del contenido que publicas (preguntas, descripciones, opciones,
         notas y enlaces). Declaras que tienes derecho a publicarlo y que no infringe derechos de
-        terceros ni la ley. El contenido es público para cualquiera que tenga el enlace y puede
-        aparecer en la lista de encuestas recientes. Nos concedes una licencia no exclusiva y
+        terceros ni la ley. El contenido es público: lo ve cualquiera que pueda acceder a la
+        encuesta, también desde la lista de encuestas recientes. Nos concedes una licencia no exclusiva y
         gratuita para alojarlo, mostrarlo y tratarlo técnicamente con el único fin de prestar el
         servicio.
       </p>
@@ -41,6 +41,10 @@ function Es() {
           Datos personales de terceros (nombres, teléfonos, direcciones, correos, datos de salud,
           etc.) sin su consentimiento.
         </li>
+        <li>
+          Suplantar a otras personas o usar el nombre real de otra persona como nombre de votante,
+          así como nombres ofensivos o ilegales.
+        </li>
         <li>Enlaces a malware, phishing, estafas o contenido ilícito.</li>
         <li>Spam, publicidad masiva o contenido engañoso.</li>
         <li>Contenido que infrinja derechos de propiedad intelectual o industrial.</li>
@@ -53,7 +57,9 @@ function Es() {
         <Email /> indicando el enlace de la encuesta, qué contenido es y por qué lo consideras
         ilícito, así como tus datos de contacto. Revisaremos el aviso con diligencia y retiraremos
         el contenido cuando proceda. Nos reservamos el derecho de eliminar o ocultar, sin previo
-        aviso, cualquier encuesta u opción que incumpla estos Términos o la ley.
+        aviso, cualquier encuesta, opción, nombre de votante o voto que incumpla estos Términos o la ley.
+        Para solicitar la retirada de un nombre o voto, escribe a <Email /> con el enlace de la
+        encuesta y el nombre que aparece.
       </p>
 
       <h2>6. Eliminación automática</h2>
@@ -126,8 +132,8 @@ function En() {
       <p>
         You are solely responsible for the content you publish (questions, descriptions, options,
         notes and links). You state that you have the right to publish it and that it does not
-        infringe third-party rights or the law. Content is public to anyone with the link and may
-        appear in the recent polls list. You grant us a non-exclusive, free licence to host,
+        infringe third-party rights or the law. Content is public: visible to anyone who can access
+        the poll, including through the recent polls list. You grant us a non-exclusive, free licence to host,
         display and technically process it for the sole purpose of providing the service.
       </p>
 
@@ -140,6 +146,10 @@ function En() {
           Personal data of third parties (names, phone numbers, addresses, emails, health data,
           etc.) without their consent.
         </li>
+        <li>
+          Impersonating others or using another person&rsquo;s real name as a voter name, and
+          offensive or illegal names.
+        </li>
         <li>Links to malware, phishing, scams or unlawful content.</li>
         <li>Spam, mass advertising or deceptive content.</li>
         <li>Content infringing intellectual or industrial property rights.</li>
@@ -151,8 +161,9 @@ function En() {
         If you find content you consider unlawful or contrary to these Terms, write to <Email />{' '}
         with the poll link, which content it is and why you consider it unlawful, plus your contact
         details. We will review the notice diligently and remove the content where appropriate. We
-        reserve the right to delete or hide, without notice, any poll or option that breaches these
-        Terms or the law.
+        reserve the right to delete or hide, without notice, any poll, option, voter name or vote
+        that breaches these Terms or the law. To request removal of a name or vote, write to{' '}
+        <Email /> with the poll link and the name shown.
       </p>
 
       <h2>6. Automatic deletion</h2>

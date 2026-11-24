@@ -68,6 +68,28 @@ function Es() {
               </td>
             </tr>
             <tr>
+              <th scope="row">Nombre de votante (nombre o apodo) publicado junto al voto</th>
+              <td>
+                El nombre o apodo que tú eliges libremente (1 a 40 caracteres) y las opciones que
+                has elegido.
+              </td>
+              <td>
+                Mostrar quién ha votado qué en la encuesta y ayudar a evitar votos duplicados (no
+                se admite el mismo nombre dos veces en una encuesta).
+              </td>
+              <td>
+                Art. 6.1.b RGPD (el servicio de votación que solicitas, que muestra quién ha votado
+                qué) y art. 6.1.f (interés legítimo en la transparencia y la prevención de
+                duplicados). El nombre lo eliges tú y puede ser un apodo; puedes oponerte (art. 21)
+                escribiendo a <Email />.
+              </td>
+              <td>
+                Igual que la encuesta: {LEGAL.RETENTION_MONTHS} meses desde la última actividad, o
+                antes si lo solicitas. Es visible públicamente para cualquiera que pueda acceder a
+                la encuesta, también desde la lista de encuestas recientes y en tiempo real.
+              </td>
+            </tr>
+            <tr>
               <th scope="row">Registros del servidor (logs)</th>
               <td>
                 IP anonimizada (último octeto IPv4 puesto a cero; IPv6 truncada), fecha y hora,
@@ -103,16 +125,28 @@ function Es() {
 
       <h2>3. Categorías de datos</h2>
       <p>
-        Datos que tú escribes (contenido de encuestas y opciones), datos técnicos pseudonimizados
-        del voto (identificador de votante, hash de IP, fecha, opciones), datos de registros
+        Datos que tú escribes (contenido de encuestas y opciones, y el nombre o apodo con el que
+        votas), datos técnicos pseudonimizados del voto (identificador de votante, hash de IP,
+        fecha), datos de registros
         con IP anonimizada y, si nos escribes, tus datos de contacto. No tratamos categorías
         especiales de datos de forma intencionada.
       </p>
       <p>
-        <strong>El contenido de las encuestas es público</strong> para cualquiera que tenga el
-        enlace y las 12 encuestas más recientes aparecen en la página de inicio. No incluyas datos
+        <strong>El contenido de las encuestas es público</strong> para cualquiera que pueda
+        acceder a ellas, y las 12 encuestas más recientes aparecen en la página de inicio. No incluyas datos
         personales tuyos ni de terceros (nombres, teléfonos, direcciones, datos de salud, etc.) en
         las preguntas, descripciones u opciones. Quien los publique es responsable de ello.
+      </p>
+      <p>
+        <strong>Tu nombre y tu voto son públicos.</strong> El nombre o apodo que indiques al
+        votar, junto con las opciones que elijas, es visible para cualquiera que pueda acceder a la
+        encuesta, incluso desde la lista de las 12 encuestas más recientes de la página de inicio
+        y en la transmisión de resultados en tiempo real. Base jurídica: art. 6.1.b RGPD (el
+        servicio de votación que solicitas, que muestra quién ha votado qué) y art. 6.1.f
+        (interés legítimo en la transparencia y la prevención de duplicados); no se basa en tu
+        consentimiento. Puedes oponerte (art. 21) escribiendo a <Email />. Si no quieres que te
+        identifiquen, usa un apodo. No introduzcas el nombre de otra persona. Los votos emitidos antes de que se pidiera nombre
+        aparecen como «Anónimo».
       </p>
       <p>
         <strong>Origen de los datos:</strong> los datos proceden directamente de ti (lo que
@@ -121,7 +155,13 @@ function Es() {
       <p>
         <strong>¿Es obligatorio facilitar los datos?</strong> Para votar o crear encuestas es
         necesario tratar los datos técnicos descritos (cookie, hash y la IP en tránsito); el
-        texto de las encuestas es voluntario. Si no los facilitas, no podrás usar esas funciones.
+        texto de las encuestas es voluntario. Para votar es obligatorio indicar un nombre (puede
+        ser un apodo); para crear una encuesta no hace falta. Si no facilitas estos datos
+        técnicos no podrás votar ni crear encuestas, y sin nombre no podrás votar.
+      </p>
+      <p>
+        Dado que el nombre y el voto son públicos, cualquier persona que acceda a la encuesta
+        puede verlos y copiarlos fuera del servicio; no podemos controlar ese uso posterior.
       </p>
 
       <h2>4. Destinatarios y encargados del tratamiento</h2>
@@ -129,7 +169,9 @@ function Es() {
         El proveedor de alojamiento, {LEGAL.HOSTING_PROVIDER}, accede a los datos como encargado
         del tratamiento, con el correspondiente contrato conforme al art. 28 RGPD. No usamos otros
         proxys ni CDN. No cedemos datos a otros terceros salvo obligación legal. El contenido
-        público de las encuestas es visible por cualquier persona con el enlace.
+        público de las encuestas, incluidos los nombres de votante y las opciones elegidas, es
+        visible por cualquier persona que pueda acceder a la encuesta, incluida la lista de
+        encuestas recientes y la transmisión de resultados en tiempo real.
       </p>
 
       <h2>5. Transferencias internacionales</h2>
@@ -186,11 +228,13 @@ function Es() {
         consentimiento que retirar, pero conservas tus derechos de oposición.
       </p>
       <p>
-        Dado que los votos son pseudonimizados (no sabemos quién eres), para ejercer derechos
-        sobre un voto es posible que debas aportar el enlace de la encuesta y el valor de tu cookie{' '}
-        <code>pw_voter_id</code>, u otra información suficiente para identificar el registro (art.
-        11 RGPD). Mientras no podamos identificarte, no estaremos obligados a conservar
-        información adicional para hacerlo.
+        Para ejercer tus derechos (por ejemplo, supresión u oposición) sobre un voto con nombre,
+        envía por correo el enlace de la encuesta y el nombre que usaste al votar, para que
+        podamos localizar el registro. Si hace falta, podemos pedirte información adicional para
+        verificar que el voto es tuyo (art. 12.6 RGPD). Los votos antiguos sin nombre solo pueden
+        localizarse con el valor de tu cookie <code>pw_voter_id</code>; mientras no podamos
+        identificarte, no estaremos obligados a conservar información adicional para hacerlo (art.
+        11 RGPD).
       </p>
       <p>
         Si consideras que tus derechos no han sido atendidos, puedes presentar una reclamación ante
@@ -277,6 +321,28 @@ function En() {
               </td>
             </tr>
             <tr>
+              <th scope="row">Voter name (name or nickname) published next to the vote</th>
+              <td>
+                The name or nickname you freely choose (1 to 40 characters) and the options you
+                chose.
+              </td>
+              <td>
+                Show who voted for what in the poll and help prevent duplicate votes (the same name
+                cannot be used twice in one poll).
+              </td>
+              <td>
+                Art. 6.1.b GDPR (the voting service you request, which shows who voted for what)
+                and art. 6.1.f (legitimate interest in transparency and preventing duplicates).
+                You choose the name and it may be a nickname; you can object (art. 21) by writing
+                to <Email />.
+              </td>
+              <td>
+                Same as the poll: {LEGAL.RETENTION_MONTHS} months after the last activity, or
+                earlier on request. It is publicly visible to anyone who can access the poll,
+                including via the recent polls list and in real time.
+              </td>
+            </tr>
+            <tr>
               <th scope="row">Server logs</th>
               <td>
                 Anonymised IP (last IPv4 octet zeroed; IPv6 truncated), timestamp, method, path
@@ -310,15 +376,26 @@ function En() {
 
       <h2>3. Data categories</h2>
       <p>
-        Data you type (poll and option content), pseudonymised technical vote data (voter
-        identifier, IP hash, date, options), logs with anonymised IP and, if you write to us, your
+        Data you type (poll and option content, and the name or nickname you vote with),
+        pseudonymised technical vote data (voter identifier, IP hash, date), logs with anonymised IP and, if you write to us, your
         contact details. We do not intentionally process special categories of data.
       </p>
       <p>
-        <strong>Poll content is public</strong> to anyone with the link, and the 12 most recent
-        polls are listed on the home page. Do not include personal data of yours or of others
+        <strong>Poll content is public</strong> to anyone who can access the poll, and the 12 most
+        recent polls are listed on the home page. Do not include personal data of yours or of others
         (names, phone numbers, addresses, health data, etc.) in questions, descriptions or options.
         Whoever publishes it is responsible for it.
+      </p>
+      <p>
+        <strong>Your name and your vote are public.</strong> The name or nickname you enter when
+        voting, together with the options you choose, is visible to anyone who can access the poll,
+        including through the list of the 12 most recent polls on the home page and the live
+        results stream. Legal basis: art. 6.1.b GDPR (the voting service you request, which shows
+        who voted for what) and art. 6.1.f (legitimate interest in transparency and preventing
+        duplicates); it is not based on your consent. You can object (art. 21) by writing to{' '}
+        <Email />. If you do not want to be identified, use a nickname. Do not enter
+        another person&rsquo;s name. Votes cast before names were requested appear as
+        &ldquo;Anonymous&rdquo;.
       </p>
       <p>
         <strong>Source of the data:</strong> the data comes directly from you (what you type and
@@ -327,15 +404,22 @@ function En() {
       <p>
         <strong>Is providing data mandatory?</strong> Voting or creating polls requires processing
         the technical data described (cookie, hash and the IP in transit); poll text is
-        voluntary. If you do not provide them, you will not be able to use those functions.
+        voluntary. Voting also requires a name (it may be a nickname); creating a poll does not.
+        If you do not allow the technical data you will not be able to vote or create polls, and
+        without a name you cannot vote.
+      </p>
+      <p>
+        Because your name and vote are public, anyone who can access the poll can see and copy them outside
+        the service; we cannot control that further use.
       </p>
 
       <h2>4. Recipients and processors</h2>
       <p>
         The hosting provider, {LEGAL.HOSTING_PROVIDER}, accesses data as a processor under a
         contract pursuant to art. 28 GDPR. We use no other proxy or CDN. We do not disclose data to
-        other third parties except where legally required. Public poll content is visible to
-        anyone with the link.
+        other third parties except where legally required. Public poll content, including
+        voter names and chosen options, is visible to anyone who can access the poll, including via the recent polls list and the live
+        results stream.
       </p>
 
       <h2>5. International transfers</h2>
@@ -390,10 +474,12 @@ function En() {
         to withdraw, but your right to object remains.
       </p>
       <p>
-        Because votes are pseudonymous (we do not know who you are), to exercise rights regarding a
-        vote you may need to provide the poll link and the value of your <code>pw_voter_id</code>{' '}
-        cookie, or other information sufficient to identify the record (art. 11 GDPR). While we
-        cannot identify you, we are not required to keep additional information to do so.
+        To exercise your rights (for example erasure or objection) regarding a named vote, email
+        us the poll link and the name you used when voting so we can locate the record. If needed,
+        we may ask for additional information to verify the vote is yours (art. 12(6) GDPR). Older
+        votes without a name can only be located with the value of your <code>pw_voter_id</code>{' '}
+        cookie; while we cannot identify you, we are not required to keep additional information
+        to do so (art. 11 GDPR).
       </p>
       <p>
         If you believe your rights have not been honoured, you may lodge a complaint with the

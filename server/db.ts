@@ -202,11 +202,63 @@ function generatePollId(): string {
   return id;
 }
 
+// Secret key for IP hashing: env IP_HASH_SECRET if set, otherwise a random secret
+// generated once and persisted next to the database file.
+function loadIpHashSecret(): string {
+  const fromEnv = process.env.IP_HASH_SECRET;
+  if (fromEnv) return fromEnv;
+
+  const secretPath = path.join(path.dirname(dbPath), 'ip_hash_secret');
+  try {
+    const existing = fs.readFileSync(secretPath, 'utf8').trim();
+    if (existing) return existing;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+  }
+
+  const secret = crypto.randomBytes(32).toString('hex');
+  try {
+    fs.writeFileSync(secretPath, secret, { mode: 0o600, flag: 'wx' });
+    return secret;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+  }
+
+  // Another process created the file but may not have written it yet: retry briefly.
+  const pause = new Int32Array(new SharedArrayBuffer(4));
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const existing = fs.readFileSync(secretPath, 'utf8').trim();
+    if (existing) return existing;
+    Atomics.wait(pause, 0, 0, 20);
+  }
+  throw new Error(`IP hash secret file ${secretPath} exists but is empty`);
+}
+
+const ipHashSecret = loadIpHashSecret();
+
 export function hashIp(ip: string, pollId: string): string {
+  if (!ipHashSecret) throw new Error('IP hash secret is empty');
   return crypto
-    .createHash('sha256')
+    .createHmac('sha256', ipHashSecret)
     .update(`${pollId}:${ip || 'unknown'}`)
     .digest('hex');
+}
+
+// Deletes polls whose last activity (creation or latest vote) is older than the
+// retention window. Options, votes and voter records go with them via ON DELETE CASCADE.
+export function deleteExpiredPolls(retentionDays: number): number {
+  const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString();
+  const result = db
+    .prepare(`
+      DELETE FROM polls
+      WHERE max(
+        created_at,
+        COALESCE((SELECT MAX(created_at) FROM votes WHERE votes.poll_id = polls.id), ''),
+        COALESCE((SELECT MAX(created_at) FROM voter_records WHERE voter_records.poll_id = polls.id), '')
+      ) < ?
+    `)
+    .run(cutoff);
+  return Number(result.changes);
 }
 
 export function createPoll({

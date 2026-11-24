@@ -6,6 +6,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import cookieParser from 'cookie-parser';
 import {
   createPoll,
+  deleteExpiredPolls,
   getPoll,
   hashIp,
   listRecentPolls,
@@ -19,8 +20,16 @@ const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
 const VOTER_COOKIE = 'pw_voter_id';
 const ENFORCE_IP_DEDUP = process.env.ENFORCE_IP_DEDUP !== 'false';
+const DEFAULT_RETENTION_DAYS = 365;
+const parsedRetention = Number(process.env.RETENTION_DAYS);
+const MAX_RETENTION_DAYS = 3650;
+const RETENTION_DAYS =
+  Number.isFinite(parsedRetention) && parsedRetention > 0 && parsedRetention <= MAX_RETENTION_DAYS
+    ? parsedRetention
+    : DEFAULT_RETENTION_DAYS;
+const RETENTION_SWEEP_MS = 60 * 60 * 1000;
 
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 
@@ -28,10 +37,6 @@ app.use(cookieParser());
 const sseClients = new Map<string, Set<Response>>();
 
 function getClientIp(req: Request): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded.length > 0) {
-    return forwarded.split(',')[0].trim();
-  }
   return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
@@ -50,6 +55,7 @@ function getOrCreateVoterToken(req: Request, res: Response): string {
       sameSite: 'lax',
       maxAge: 365 * 24 * 60 * 60 * 1000,
       path: '/',
+      secure: req.secure,
     });
   }
   return token;
@@ -336,6 +342,26 @@ function getLanAddresses(): string[] {
   }
   return addresses;
 }
+
+function runRetentionCleanup(): void {
+  try {
+    const deleted = deleteExpiredPolls(RETENTION_DAYS);
+    if (deleted > 0) {
+      console.log(`Retention cleanup: deleted ${deleted} expired poll(s)`);
+    }
+    // Close live streams of polls that no longer exist
+    for (const [pollId, clients] of [...sseClients]) {
+      if (getPoll(pollId)) continue;
+      for (const client of clients) client.end();
+      sseClients.delete(pollId);
+    }
+  } catch (err) {
+    console.error('Retention cleanup failed:', err);
+  }
+}
+
+runRetentionCleanup();
+setInterval(runRetentionCleanup, RETENTION_SWEEP_MS).unref();
 
 app.listen(PORT, HOST, () => {
   console.log(`Poll Walker server listening on:`);
